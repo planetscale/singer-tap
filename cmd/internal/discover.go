@@ -39,9 +39,9 @@ func Discover(ctx context.Context, source PlanetScaleSource) (Catalog, error) {
 		if err != nil {
 			return c, errors.Wrapf(err, "unable to retrieve primary keys for table : %v , failed with : %q", name, err)
 		}
-		table.GenerateMetadata(keyProperties)
 		table.KeyProperties = keyProperties
 		table.CursorProperties = keyProperties
+		table.GenerateMetadata()
 
 		c.Streams = append(c.Streams, table)
 	}

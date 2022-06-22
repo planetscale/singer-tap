@@ -116,10 +116,10 @@ type Metadata struct {
 	Metadata NodeMetadata `json:"metadata"`
 }
 
-func (s *Stream) GenerateMetadata(keys []string) error {
+func (s *Stream) GenerateMetadata() error {
 	streamMetadata := NewMetadata()
-	streamMetadata.Metadata.TableKeyProperties = keys
-	streamMetadata.Metadata.ValidReplicationKeys = keys
+	streamMetadata.Metadata.TableKeyProperties = s.KeyProperties
+	streamMetadata.Metadata.ValidReplicationKeys = s.KeyProperties
 	// need this to be an empty array since Singer needs an empty JSON array here.
 	streamMetadata.Metadata.BreadCrumb = []string{}
 	s.Metadata = append(s.Metadata, streamMetadata)
