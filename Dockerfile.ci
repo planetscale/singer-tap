@@ -14,4 +14,4 @@ WORKDIR /singer-tap
 COPY . .
 
 RUN go mod download
-RUN go build -o /singer-tap
+RUN go build ./cmd/singer-tap

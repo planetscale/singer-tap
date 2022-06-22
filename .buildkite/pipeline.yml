@@ -7,7 +7,7 @@ steps:
       DOCKER_BUILDKIT: 1
     plugins:
       - docker-compose#v3.7.0:
-          run: app
+          run: ci
 
   - name: "Tests"
     label: "Tests"
