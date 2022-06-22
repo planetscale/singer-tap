@@ -91,6 +91,14 @@ type Stream struct {
 	//  "breadcrumb" : ["properties", "some-field-name"]
 	//}
 	Metadata []Metadata `json:"metadata"`
+
+	// A list of strings indicating which properties make up the primary key for this stream.
+	// Each item in the list must be the name of a top-level property defined in the schema
+	KeyProperties []string `json:"key_properties"`
+
+	// A list of strings indicating which properties the tap is using as bookmarks.
+	// Each item in the list must be the name of a top-level property defined in the schema.
+	CursorProperties []string `json:"bookmark_properties"`
 }
 
 type StreamSchema struct {
