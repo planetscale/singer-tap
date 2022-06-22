@@ -28,49 +28,46 @@ func init() {
 
 func main() {
 	flag.Parse()
-	execute(discoverMode, configFilePath, catalogFilePath, stateFilePath)
+	logger := internal.NewLogger(os.Stdout, os.Stderr)
+	err := execute(discoverMode, logger, configFilePath, catalogFilePath, stateFilePath)
+	if err != nil {
+		logger.Error(err.Error())
+		os.Exit(1)
+	}
 }
 
-func execute(discoverMode bool, configFilePath, catalogFilePath, stateFilePath string) {
-	logger := internal.NewLogger(os.Stdout, os.Stderr)
+func execute(discoverMode bool, logger internal.Logger, configFilePath, catalogFilePath, stateFilePath string) error {
+
 	var (
 		sourceConfig internal.PlanetScaleSource
 		err          error
 	)
 
 	if len(configFilePath) == 0 {
-		fmt.Println("Please specify path to a valid configuration file with the --config flag")
-		os.Exit(1)
+		return errors.New("Please specify path to a valid configuration file with the --config flag")
 	}
 
 	sourceConfig, err = parse(configFilePath, sourceConfig)
 	if err != nil {
-		logger.Log(fmt.Sprintf("config file contents are invalid: %q", err))
-		os.Exit(1)
+		return fmt.Errorf("config file contents are invalid: %q", err)
 	}
 
 	syncMode = !discoverMode
 
 	if discoverMode {
-		err := discover(context.Background(), logger, sourceConfig)
-		if err != nil {
-			logger.Error(err.Error())
-			os.Exit(1)
-		}
-		return
+		logger.Info("running in discovery mode")
+		return discover(context.Background(), logger, sourceConfig)
 	}
 
 	if len(catalogFilePath) == 0 {
-		fmt.Println("Please specify path to a valid catalog file with the --catalog flag")
-		os.Exit(1)
+		return errors.New("Please specify path to a valid catalog file with the --catalog flag")
 	}
 
 	if syncMode {
-		fmt.Println("running in sync mode")
+		logger.Info("running in sync mode")
 	}
 
-	logger.Error("SYNC mode is not supported yet")
-	os.Exit(1)
+	return errors.New("SYNC mode is not supported yet")
 }
 
 func discover(ctx context.Context, logger internal.Logger, source internal.PlanetScaleSource) error {

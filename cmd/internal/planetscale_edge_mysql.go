@@ -76,7 +76,7 @@ func (p planetScaleEdgeMySQLAccess) GetTableNames(ctx context.Context, psc Plane
 		return tables, errors.Wrap(err, "unable to iterate table rows")
 	}
 
-	return tables, err
+	return tables, nil
 }
 
 func (p planetScaleEdgeMySQLAccess) GetTableSchema(ctx context.Context, psc PlanetScaleSource, tableName string) (map[string]StreamProperty, error) {

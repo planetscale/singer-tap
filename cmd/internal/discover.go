@@ -41,7 +41,7 @@ func Discover(ctx context.Context, source PlanetScaleSource) (Catalog, error) {
 		}
 		table.KeyProperties = keyProperties
 		table.CursorProperties = keyProperties
-		table.GenerateMetadata()
+		table.GenerateMetadata(keyProperties)
 
 		c.Streams = append(c.Streams, table)
 	}

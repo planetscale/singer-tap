@@ -18,7 +18,7 @@ type SerializedCursor struct {
 func TableCursorToSerializedCursor(cursor *psdbconnect.TableCursor) (*SerializedCursor, error) {
 	d, err := codec.DefaultCodec.Marshal(cursor)
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to marshal table cursor to save staate.")
+		return nil, errors.Wrap(err, "unable to marshal table cursor to save state")
 	}
 
 	sc := &SerializedCursor{
@@ -116,10 +116,10 @@ type Metadata struct {
 	Metadata NodeMetadata `json:"metadata"`
 }
 
-func (s *Stream) GenerateMetadata() error {
+func (s *Stream) GenerateMetadata(keyProperties []string) error {
 	streamMetadata := NewMetadata()
-	streamMetadata.Metadata.TableKeyProperties = s.KeyProperties
-	streamMetadata.Metadata.ValidReplicationKeys = s.KeyProperties
+	streamMetadata.Metadata.TableKeyProperties = keyProperties
+	streamMetadata.Metadata.ValidReplicationKeys = keyProperties
 	// need this to be an empty array since Singer needs an empty JSON array here.
 	streamMetadata.Metadata.BreadCrumb = []string{}
 	s.Metadata = append(s.Metadata, streamMetadata)
