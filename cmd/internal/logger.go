@@ -46,6 +46,7 @@ func (sl *singerLogger) Log(msg string) {
 }
 
 func (sl *singerLogger) Schema(schema Catalog) error {
+	schema.Type = "SCHEMA"
 	return sl.recordEncoder.Encode(schema)
 }
 
