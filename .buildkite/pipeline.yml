@@ -2,13 +2,6 @@ agents:
   queue: "private"
 
 steps:
-  - name: "go build"
-    env:
-      DOCKER_BUILDKIT: 1
-    plugins:
-      - docker-compose#v3.7.0:
-          run: ci
-
   - name: "Tests"
     label: "Tests"
     command: "go test -race -v ./..."

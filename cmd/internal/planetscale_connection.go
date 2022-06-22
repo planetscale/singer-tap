@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-// PlanetScaleSource defines a configured Airbyte Source for a PlanetScale database
+// PlanetScaleSource defines a configured Singer Tap Source for a PlanetScale database
 type PlanetScaleSource struct {
 	Host     string `json:"host"`
 	Database string `json:"database"`
@@ -36,7 +36,7 @@ func (psc PlanetScaleSource) DSN(tt psdbconnect.TabletType) string {
 }
 
 // GetInitialState will return the initial/blank state for a given keyspace in all of its shards.
-// This state can be round-tripped safely with Airbyte.
+// This state can be round-tripped safely with Singer.
 func (psc PlanetScaleSource) GetInitialState(keyspaceOrDatabase string, shards []string) (ShardStates, error) {
 	shardCursors := ShardStates{
 		Shards: map[string]*SerializedCursor{},
