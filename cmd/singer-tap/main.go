@@ -40,6 +40,11 @@ func execute(discoverMode bool, configFilePath, catalogFilePath, stateFilePath s
 		err          error
 	)
 
+	if len(configFilePath) == 0 {
+		fmt.Println("Please specify path to a valid configuration file with the --config flag")
+		os.Exit(1)
+	}
+
 	sourceConfig, err = parse(configFilePath, sourceConfig)
 	if err != nil {
 		logger.Log(fmt.Sprintf("config file contents are invalid: %q", err))
@@ -55,11 +60,6 @@ func execute(discoverMode bool, configFilePath, catalogFilePath, stateFilePath s
 			os.Exit(1)
 		}
 		return
-	}
-
-	if len(configFilePath) == 0 {
-		fmt.Println("Please specify path to a valid configuration file with the --config flag")
-		os.Exit(1)
 	}
 
 	if len(catalogFilePath) == 0 {
