@@ -34,9 +34,7 @@ func main() {
 func execute(discoverMode bool, configFilePath, catalogFilePath, stateFilePath string) {
 	logger := internal.NewLogger(os.Stdout, os.Stderr)
 	var (
-		catalog      internal.Catalog
 		sourceConfig internal.PlanetScaleSource
-		state        internal.State
 		err          error
 	)
 
@@ -69,20 +67,6 @@ func execute(discoverMode bool, configFilePath, catalogFilePath, stateFilePath s
 
 	if syncMode {
 		fmt.Println("running in sync mode")
-	}
-
-	catalog, err = parse(catalogFilePath, catalog)
-	if err != nil {
-		fmt.Printf("catalog file contents are invalid : %q", err)
-		os.Exit(1)
-	}
-
-	if len(stateFilePath) > 0 {
-		state, err = parse(stateFilePath, state)
-		if err != nil {
-			fmt.Printf("state file contents are invalid: %q", err)
-			os.Exit(1)
-		}
 	}
 
 	logger.Error("SYNC mode is not supported yet")
