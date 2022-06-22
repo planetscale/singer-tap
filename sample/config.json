@@ -1,0 +1,6 @@
+{
+  "host": "us-east.connect.psdb.cloud",
+  "database": "<PlanetScale database name>",
+  "password": "<PlanetScale password>",
+  "username": "<PlanetScale username>"
+}
