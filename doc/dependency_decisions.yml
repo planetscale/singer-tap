@@ -1,0 +1,79 @@
+---
+- - :approve
+  - github.com/go-sql-driver/mysql
+  - :who: 
+    :why: 
+    :versions: []
+    :when: 2022-06-22 18:37:26.248572000 Z
+- - :approve
+  - github.com/golang/protobuf
+  - :who: 
+    :why: 
+    :versions: []
+    :when: 2022-06-22 18:37:31.378514000 Z
+- - :approve
+  - github.com/pkg/errors,
+  - :who: 
+    :why: 
+    :versions: []
+    :when: 2022-06-22 18:37:35.041162000 Z
+- - :approve
+  - github.com/pkg/errors
+  - :who: 
+    :why: 
+    :versions: []
+    :when: 2022-06-22 18:37:37.022421000 Z
+- - :approve
+  - github.com/planetscale/airbyte-source
+  - :who: 
+    :why: 
+    :versions: []
+    :when: 2022-06-22 18:37:42.546556000 Z
+- - :approve
+  - github.com/planetscale/psdb
+  - :who: 
+    :why: 
+    :versions: []
+    :when: 2022-06-22 18:38:17.618873000 Z
+- - :approve
+  - golang.org/x/net
+  - :who: 
+    :why: 
+    :versions: []
+    :when: 2022-06-22 18:38:18.179992000 Z
+- - :approve
+  - golang.org/x/sys
+  - :who: 
+    :why: 
+    :versions: []
+    :when: 2022-06-22 18:38:18.735946000 Z
+- - :approve
+  - golang.org/x/text
+  - :who: 
+    :why: 
+    :versions: []
+    :when: 2022-06-22 18:38:19.295097000 Z
+- - :approve
+  - google.golang.org/genproto
+  - :who: 
+    :why: 
+    :versions: []
+    :when: 2022-06-22 18:38:19.858950000 Z
+- - :approve
+  - google.golang.org/grpc
+  - :who: 
+    :why: 
+    :versions: []
+    :when: 2022-06-22 18:38:20.422057000 Z
+- - :approve
+  - google.golang.org/protobuf
+  - :who: 
+    :why: 
+    :versions: []
+    :when: 2022-06-22 18:38:20.984356000 Z
+- - :approve
+  - vitess.io/vitess
+  - :who: 
+    :why: 
+    :versions: []
+    :when: 2022-06-22 18:38:21.548087000 Z
