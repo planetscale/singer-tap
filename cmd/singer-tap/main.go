@@ -12,6 +12,7 @@ import (
 )
 
 var (
+	syncMode        bool
 	discoverMode    bool
 	catalogFilePath string
 	configFilePath  string
@@ -39,8 +40,6 @@ func execute(discoverMode bool, logger internal.Logger, configFilePath, catalogF
 
 	var (
 		sourceConfig internal.PlanetScaleSource
-		catalog      internal.Catalog
-		state        internal.State
 		err          error
 	)
 
@@ -53,6 +52,8 @@ func execute(discoverMode bool, logger internal.Logger, configFilePath, catalogF
 		return fmt.Errorf("config file contents are invalid: %q", err)
 	}
 
+	syncMode = !discoverMode
+
 	if discoverMode {
 		logger.Info("running in discovery mode")
 		return discover(context.Background(), logger, sourceConfig)
@@ -62,25 +63,11 @@ func execute(discoverMode bool, logger internal.Logger, configFilePath, catalogF
 		return errors.New("Please specify path to a valid catalog file with the --catalog flag")
 	}
 
-	catalog, err = parse(catalogFilePath, catalog)
-	if err != nil {
-		return fmt.Errorf("catalog file contents are invalid: %q", err)
+	if syncMode {
+		logger.Info("running in sync mode")
 	}
 
-	if len(stateFilePath) > 0 {
-		state, err = parse(stateFilePath, state)
-		if err != nil {
-			return fmt.Errorf("state file contents are invalid: %q", err)
-		}
-	}
-
-	return sync(context.Background(), logger, sourceConfig, catalog, state)
-}
-
-func sync(ctx context.Context, logger internal.Logger, source internal.PlanetScaleSource, catalog internal.Catalog, state internal.State) error {
-	logger.Info(fmt.Sprintf("Syncing records for PlanetScale database : %v", source.Database))
-	internal.Sync(ctx, &logger, source, catalog, state)
-	return nil
+	return errors.New("SYNC mode is not supported yet")
 }
 
 func discover(ctx context.Context, logger internal.Logger, source internal.PlanetScaleSource) error {

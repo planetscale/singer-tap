@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/pkg/errors"
 	"io/ioutil"
 	"net/http"
 	"time"
@@ -25,7 +24,10 @@ func NewBatchWriter(batchSize int, logger Logger, apiURL, apiToken string) Batch
 		apiURL:    apiURL,
 		apiToken:  apiToken,
 		logger:    logger,
-		messages:  make([]ImportMessage, 0, batchSize),
+		client: &http.Client{
+			Timeout: time.Second * 10,
+		},
+		messages: make([]ImportMessage, 0, batchSize),
 	}
 }
 
@@ -34,6 +36,7 @@ type httpBatchWriter struct {
 	apiURL    string
 	apiToken  string
 	logger    Logger
+	client    *http.Client
 	messages  []ImportMessage
 }
 
@@ -43,11 +46,11 @@ type BatchResponse struct {
 }
 
 func (h *httpBatchWriter) Flush(stream *Stream) error {
-	h.logger.Info(fmt.Sprintf("flushing [%v] messages for stream \"%v\"", len(h.messages), stream.Name))
-
 	if len(h.messages) == 0 {
 		return nil
 	}
+
+	h.logger.Info(fmt.Sprintf("flushing [%v] messages for stream %q", len(h.messages), stream.Name))
 
 	batch := ImportBatch{
 		Table:       stream.Name,
@@ -68,31 +71,28 @@ func (h *httpBatchWriter) Flush(stream *Stream) error {
 	stitch.Header.Set("Content-Type", "application/json")
 	stitch.Header.Set("Authorization", "Bearer "+h.apiToken)
 
-	client := &http.Client{
-		Timeout: time.Second * 10,
-	}
-
-	stitchResponse, err := client.Do(stitch)
+	stitchResponse, err := h.client.Do(stitch)
 	if err != nil {
 		return err
 	}
+
+	defer stitchResponse.Body.Close()
 
 	if stitchResponse.StatusCode > 203 {
 		body, err := ioutil.ReadAll(stitchResponse.Body)
 		if err != nil {
 			return err
 		}
-		return errors.New(fmt.Sprintf("Server request failed with %s", body))
+		return fmt.Errorf("Server request failed with %s", body)
 	}
 
-	defer stitchResponse.Body.Close()
 	var resp BatchResponse
 	decoder := json.NewDecoder(stitchResponse.Body)
 	if err := decoder.Decode(&resp); err != nil {
 		return err
 	}
 
-	h.logger.Info(fmt.Sprintf("Server response status : \"%v\", message : \"%v\"", resp.Status, resp.Message))
+	h.logger.Info(fmt.Sprintf("Server response status : %q, message : %q", resp.Status, resp.Message))
 
 	h.messages = h.messages[:0]
 
