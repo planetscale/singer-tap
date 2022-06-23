@@ -125,6 +125,15 @@ type Metadata struct {
 	Metadata NodeMetadata `json:"metadata"`
 }
 
+func (s *Stream) IncrementalSyncRequested() bool {
+	tm, err := s.GetTableMetadata()
+	if err != nil {
+		return false
+	}
+
+	return tm.Metadata.ReplicationMethod == "INCREMENTAL"
+}
+
 // GetTableMetadata iterates the Metadata collection for a stream
 // and returns the metadata item that is associated with the stream.
 func (s *Stream) GetTableMetadata() (*Metadata, error) {

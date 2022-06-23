@@ -14,20 +14,37 @@ func Sync(ctx context.Context, logger Logger, source PlanetScaleSource, catalog 
 
 	mysql, err := NewMySQL(&source)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "unable to create mysql connection")
 	}
 
 	ped := PlanetScaleEdgeDatabase{
 		Mysql:  mysql,
 		Logger: logger,
 	}
+	shards, err := mysql.GetVitessShards(ctx, source)
+	if err != nil {
+		return err
+	}
+
+	initialState, err := source.GetInitialState(source.Database, shards)
+	if err != nil {
+		return err
+	}
 
 	for _, stream := range s.Streams {
 		logger.StreamSchema(stream)
-		ped.Read(ctx, source, stream, &psdbconnect.TableCursor{
-			Shard:    "-",
-			Keyspace: source.Database,
-		})
+
+		// TODO : implement incremental sync
+		if stream.IncrementalSyncRequested() {
+			return errors.New("Incrmental sync is not yet supported.")
+		}
+
+		for shard := range initialState.Shards {
+			ped.Read(ctx, source, stream, &psdbconnect.TableCursor{
+				Shard:    shard,
+				Keyspace: source.Database,
+			})
+		}
 	}
 	return nil
 }
@@ -38,6 +55,7 @@ func filterSchema(catalog Catalog) (Catalog, error) {
 		Type: "CATALOG",
 	}
 	for _, stream := range catalog.Streams {
+
 		tableMetadata, err := stream.GetTableMetadata()
 		if err != nil {
 			return filteredCatalog, err
