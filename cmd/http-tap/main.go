@@ -63,11 +63,9 @@ func execute(logger internal.Logger, apiUrl string, batchSize int, token string)
 
 			// we retain the catalog so we can build a BatchMessage
 			stream = s
-			logger.Info("writing records for schema : " + s.Name)
 		}
 
 		if r != nil {
-			logger.Info(fmt.Sprintf("found record message for stream %q in stdin", stream.Name))
 			if err := batchWriter.Send(r, stream); err != nil {
 				return err
 			}
