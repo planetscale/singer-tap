@@ -103,7 +103,6 @@ func (p planetScaleEdgeMySQLAccess) GetVitessTablets(ctx context.Context, psc Pl
 	}
 	return tablets, nil
 }
-
 func (p planetScaleEdgeMySQLAccess) PingContext(ctx context.Context, psc PlanetScaleSource) error {
 
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)

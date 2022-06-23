@@ -262,9 +262,13 @@ func (p PlanetScaleEdgeDatabase) getLatestCursorPosition(ctx context.Context, sh
 func (p PlanetScaleEdgeDatabase) printQueryResult(qr *sqltypes.Result, s Stream) {
 	data := QueryResultToRecords(qr)
 	for _, datum := range data {
+		subset := map[string]interface{}{}
+		for selectedProperty := range s.Schema.Properties {
+			subset[selectedProperty] = datum[selectedProperty]
+		}
 		record := NewRecord()
 		record.Stream = s.Name
-		record.Data = datum
+		record.Data = subset
 		p.Logger.Record(record, s)
 	}
 }

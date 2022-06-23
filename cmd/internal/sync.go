@@ -3,6 +3,7 @@ package internal
 import (
 	"context"
 	"github.com/pkg/errors"
+	psdbconnect "github.com/planetscale/airbyte-source/proto/psdbconnect/v1alpha1"
 )
 
 func Sync(ctx context.Context, logger Logger, source PlanetScaleSource, catalog Catalog, state State) error {
@@ -11,8 +12,22 @@ func Sync(ctx context.Context, logger Logger, source PlanetScaleSource, catalog 
 		return errors.Wrap(err, "unable to filter schema")
 	}
 
+	mysql, err := NewMySQL(&source)
+	if err != nil {
+		return err
+	}
+
+	ped := PlanetScaleEdgeDatabase{
+		Mysql:  mysql,
+		Logger: logger,
+	}
+
 	for _, stream := range s.Streams {
 		logger.StreamSchema(stream)
+		ped.Read(ctx, source, stream, &psdbconnect.TableCursor{
+			Shard:    "-",
+			Keyspace: source.Database,
+		})
 	}
 	return nil
 }

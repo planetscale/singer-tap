@@ -43,9 +43,9 @@ type BatchResponse struct {
 }
 
 func (h *httpBatchWriter) Flush(stream *Stream) error {
-	h.logger.Info(fmt.Sprintf("flushing [%v] messages for stream \"%v\"", len(h.messages), stream.Name))
+	count := len(h.messages)
 
-	if len(h.messages) == 0 {
+	if count == 0 {
 		return nil
 	}
 
@@ -74,6 +74,7 @@ func (h *httpBatchWriter) Flush(stream *Stream) error {
 
 	stitchResponse, err := client.Do(stitch)
 	if err != nil {
+		h.logger.Error(err.Error())
 		return err
 	}
 
@@ -84,6 +85,7 @@ func (h *httpBatchWriter) Flush(stream *Stream) error {
 		}
 		return errors.New(fmt.Sprintf("Server request failed with %s", body))
 	}
+	h.messages = h.messages[:0]
 
 	defer stitchResponse.Body.Close()
 	var resp BatchResponse
@@ -94,15 +96,13 @@ func (h *httpBatchWriter) Flush(stream *Stream) error {
 
 	h.logger.Info(fmt.Sprintf("Server response status : \"%v\", message : \"%v\"", resp.Status, resp.Message))
 
-	h.messages = h.messages[:0]
-
 	return nil
 }
 
 func (h *httpBatchWriter) Send(record *Record, stream *Stream) error {
 	h.messages = append(h.messages, createImportMessage(record))
-	if len(h.messages) == MaxBatchSize {
-		h.Flush(stream)
+	if len(h.messages) >= h.batchSize {
+		return h.Flush(stream)
 	}
 
 	return nil
