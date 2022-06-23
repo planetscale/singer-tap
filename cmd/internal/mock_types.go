@@ -8,47 +8,52 @@ import (
 	"io"
 )
 
-type testAirbyteLogger struct {
-	logMessages map[string][]string
-	records     map[string][]map[string]interface{}
+type testSingerLogger struct {
+	logMessages []string
+	records     map[string][]Record
 }
 
-func (tal *testAirbyteLogger) Log(level, message string) {
+func (tal *testSingerLogger) Log(message string) {
 	if tal.logMessages == nil {
-		tal.logMessages = map[string][]string{}
+		tal.logMessages = []string{}
 	}
-	tal.logMessages[level] = append(tal.logMessages[level], message)
+	tal.logMessages = append(tal.logMessages, message)
 }
 
-func (testAirbyteLogger) Catalog(catalog Catalog) {
+func (tal *testSingerLogger) Info(message string) {
+	tal.logMessages = append(tal.logMessages, message)
+}
+
+func (tal *testSingerLogger) Error(message string) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (testAirbyteLogger) ConnectionStatus(status ConnectionStatus) {
+func (tal *testSingerLogger) Schema(catalog Catalog) error {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (tal *testAirbyteLogger) Record(tableNamespace, tableName string, data map[string]interface{}) {
+func (tal *testSingerLogger) StreamSchema(stream Stream) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (tal *testSingerLogger) Record(record Record, stream Stream) error {
 	if tal.records == nil {
-		tal.records = map[string][]map[string]interface{}{}
+		tal.records = make(map[string][]Record)
 	}
-	key := tableNamespace + "." + tableName
-	tal.records[key] = append(tal.records[key], data)
+
+	if tal.records[stream.Name] == nil {
+		tal.records[stream.Name] = []Record{}
+	}
+
+	tal.records[stream.Name] = append(tal.records[stream.Name], record)
+	return nil
 }
 
-func (testAirbyteLogger) Flush() {
-}
+func (tal *testSingerLogger) Flush(stream Stream) {
 
-func (testAirbyteLogger) State(syncState SyncState) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (testAirbyteLogger) Error(error string) {
-	//TODO implement me
-	panic("implement me")
 }
 
 type clientConnectionMock struct {
@@ -93,7 +98,7 @@ func (mysqlAccessMock) GetTableNames(ctx context.Context, source PlanetScaleSour
 	panic("implement me")
 }
 
-func (mysqlAccessMock) GetTableSchema(ctx context.Context, source PlanetScaleSource, s string) (map[string]PropertyType, error) {
+func (mysqlAccessMock) GetTableSchema(ctx context.Context, source PlanetScaleSource, s string) (map[string]StreamProperty, error) {
 	//TODO implement me
 	panic("implement me")
 }

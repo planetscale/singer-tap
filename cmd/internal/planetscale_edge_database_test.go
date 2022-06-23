@@ -7,7 +7,6 @@ import (
 	psdbconnect "github.com/planetscale/airbyte-source/proto/psdbconnect/v1alpha1"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
-	"os"
 	"testing"
 	"vitess.io/vitess/go/sqltypes"
 	"vitess.io/vitess/go/vt/proto/query"
@@ -46,13 +45,10 @@ func TestRead_CanPeekBeforeRead(t *testing.T) {
 		return &cc, nil
 	}
 	ps := PlanetScaleSource{}
-	cs := ConfiguredStream{
-		Stream: Stream{
-			Name:      "customers",
-			Namespace: "connect-test",
-		},
+	cs := Stream{
+		Name: "stream",
 	}
-	sc, err := ped.Read(context.Background(), os.Stdout, ps, cs, tc)
+	sc, err := ped.Read(context.Background(), ps, cs, tc)
 	assert.NoError(t, err)
 	esc, err := TableCursorToSerializedCursor(tc)
 	assert.NoError(t, err)
@@ -90,13 +86,10 @@ func TestRead_CanEarlyExitIfNoNewVGtidInPeek(t *testing.T) {
 		return &cc, nil
 	}
 	ps := PlanetScaleSource{}
-	cs := ConfiguredStream{
-		Stream: Stream{
-			Name:      "customers",
-			Namespace: "connect-test",
-		},
+	cs := Stream{
+		Name: "stream",
 	}
-	sc, err := ped.Read(context.Background(), os.Stdout, ps, cs, tc)
+	sc, err := ped.Read(context.Background(), ps, cs, tc)
 	assert.NoError(t, err)
 	esc, err := TableCursorToSerializedCursor(tc)
 	assert.NoError(t, err)
@@ -135,13 +128,10 @@ func TestRead_CanPickPrimaryForShardedKeyspaces(t *testing.T) {
 	ps := PlanetScaleSource{
 		Database: "connect-test",
 	}
-	cs := ConfiguredStream{
-		Stream: Stream{
-			Name:      "customers",
-			Namespace: "connect-test",
-		},
+	cs := Stream{
+		Name: "stream",
 	}
-	sc, err := ped.Read(context.Background(), os.Stdout, ps, cs, tc)
+	sc, err := ped.Read(context.Background(), ps, cs, tc)
 	assert.NoError(t, err)
 	esc, err := TableCursorToSerializedCursor(tc)
 	assert.NoError(t, err)
@@ -151,56 +141,56 @@ func TestRead_CanPickPrimaryForShardedKeyspaces(t *testing.T) {
 	assert.False(t, tma.GetVitessTabletsFnInvoked)
 }
 
-func TestDiscover_CanPickRightAirbyteType(t *testing.T) {
+func TestDiscover_CanPickRightSingerType(t *testing.T) {
 	var tests = []struct {
 		MysqlType      string
 		JSONSchemaType string
-		AirbyteType    string
+		SingerType     string
 	}{
 		{
 			MysqlType:      "int(32)",
 			JSONSchemaType: "integer",
-			AirbyteType:    "",
+			SingerType:     "",
 		},
 		{
 			MysqlType:      "tinyint(1)",
 			JSONSchemaType: "boolean",
-			AirbyteType:    "",
+			SingerType:     "",
 		},
 		{
 			MysqlType:      "bigint(16)",
 			JSONSchemaType: "string",
-			AirbyteType:    "big_integer",
+			SingerType:     "big_integer",
 		},
 		{
 			MysqlType:      "bigint unsigned",
 			JSONSchemaType: "string",
-			AirbyteType:    "big_integer",
+			SingerType:     "big_integer",
 		},
 		{
 			MysqlType:      "bigint zerofill",
 			JSONSchemaType: "string",
-			AirbyteType:    "big_integer",
+			SingerType:     "big_integer",
 		},
 		{
 			MysqlType:      "datetime",
 			JSONSchemaType: "string",
-			AirbyteType:    "timestamp_with_timezone",
+			SingerType:     "timestamp_with_timezone",
 		},
 		{
 			MysqlType:      "date",
 			JSONSchemaType: "string",
-			AirbyteType:    "date",
+			SingerType:     "date-time",
 		},
 		{
 			MysqlType:      "text",
 			JSONSchemaType: "string",
-			AirbyteType:    "",
+			SingerType:     "",
 		},
 		{
 			MysqlType:      "varchar(256)",
 			JSONSchemaType: "string",
-			AirbyteType:    "",
+			SingerType:     "",
 		},
 	}
 
@@ -208,8 +198,8 @@ func TestDiscover_CanPickRightAirbyteType(t *testing.T) {
 
 		t.Run(fmt.Sprintf("mysql_type_%v", typeTest.MysqlType), func(t *testing.T) {
 			p := getJsonSchemaType(typeTest.MysqlType)
-			assert.Equal(t, typeTest.AirbyteType, p.AirbyteType)
-			assert.Equal(t, typeTest.JSONSchemaType, p.Type)
+			assert.Equal(t, typeTest.SingerType, p.CustomFormat, "wrong custom format")
+			assert.Equal(t, typeTest.JSONSchemaType, p.Types[1], "wrong jsonschema type")
 		})
 	}
 }
@@ -217,7 +207,7 @@ func TestRead_CanPickPrimaryForUnshardedKeyspaces(t *testing.T) {
 	tma := getTestMysqlAccess()
 	b := bytes.NewBufferString("")
 	ped := PlanetScaleEdgeDatabase{
-		Logger: NewLogger(b),
+		Logger: NewLogger("test", b, b),
 		Mysql:  tma,
 	}
 	tc := &psdbconnect.TableCursor{
@@ -246,13 +236,10 @@ func TestRead_CanPickPrimaryForUnshardedKeyspaces(t *testing.T) {
 	ps := PlanetScaleSource{
 		Database: "connect-test",
 	}
-	cs := ConfiguredStream{
-		Stream: Stream{
-			Name:      "customers",
-			Namespace: "connect-test",
-		},
+	cs := Stream{
+		Name: "stream",
 	}
-	sc, err := ped.Read(context.Background(), os.Stdout, ps, cs, tc)
+	sc, err := ped.Read(context.Background(), ps, cs, tc)
 	assert.NoError(t, err)
 	esc, err := TableCursorToSerializedCursor(tc)
 	assert.NoError(t, err)
@@ -266,7 +253,7 @@ func TestRead_CanReturnOriginalCursorIfNoNewFound(t *testing.T) {
 	tma := getTestMysqlAccess()
 	b := bytes.NewBufferString("")
 	ped := PlanetScaleEdgeDatabase{
-		Logger: NewLogger(b),
+		Logger: NewLogger("test", b, b),
 		Mysql:  tma,
 	}
 	tc := &psdbconnect.TableCursor{
@@ -293,13 +280,10 @@ func TestRead_CanReturnOriginalCursorIfNoNewFound(t *testing.T) {
 	ps := PlanetScaleSource{
 		Database: "connect-test",
 	}
-	cs := ConfiguredStream{
-		Stream: Stream{
-			Name:      "customers",
-			Namespace: "connect-test",
-		},
+	cs := Stream{
+		Name: "stream",
 	}
-	sc, err := ped.Read(context.Background(), os.Stdout, ps, cs, tc)
+	sc, err := ped.Read(context.Background(), ps, cs, tc)
 	assert.NoError(t, err)
 	esc, err := TableCursorToSerializedCursor(tc)
 	assert.NoError(t, err)
@@ -311,7 +295,7 @@ func TestRead_CanReturnNewCursorIfNewFound(t *testing.T) {
 	tma := getTestMysqlAccess()
 	b := bytes.NewBufferString("")
 	ped := PlanetScaleEdgeDatabase{
-		Logger: NewLogger(b),
+		Logger: NewLogger("test", b, b),
 		Mysql:  tma,
 	}
 	tc := &psdbconnect.TableCursor{
@@ -344,13 +328,10 @@ func TestRead_CanReturnNewCursorIfNewFound(t *testing.T) {
 	ps := PlanetScaleSource{
 		Database: "connect-test",
 	}
-	cs := ConfiguredStream{
-		Stream: Stream{
-			Name:      "customers",
-			Namespace: "connect-test",
-		},
+	cs := Stream{
+		Name: "stream",
 	}
-	sc, err := ped.Read(context.Background(), os.Stdout, ps, cs, tc)
+	sc, err := ped.Read(context.Background(), ps, cs, tc)
 	assert.NoError(t, err)
 	esc, err := TableCursorToSerializedCursor(newTC)
 	assert.NoError(t, err)
@@ -360,7 +341,7 @@ func TestRead_CanReturnNewCursorIfNewFound(t *testing.T) {
 
 func TestRead_CanStopAtWellKnownCursor(t *testing.T) {
 	tma := getTestMysqlAccess()
-	tal := testAirbyteLogger{}
+	tal := testSingerLogger{}
 	ped := PlanetScaleEdgeDatabase{
 		Logger: &tal,
 		Mysql:  tma,
@@ -427,14 +408,11 @@ func TestRead_CanStopAtWellKnownCursor(t *testing.T) {
 	ps := PlanetScaleSource{
 		Database: "connect-test",
 	}
-	cs := ConfiguredStream{
-		Stream: Stream{
-			Name:      "customers",
-			Namespace: "connect-test",
-		},
+	cs := Stream{
+		Name: "customers",
 	}
 
-	sc, err := ped.Read(context.Background(), os.Stdout, ps, cs, responses[0].Cursor)
+	sc, err := ped.Read(context.Background(), ps, cs, responses[0].Cursor)
 	assert.NoError(t, err)
 	// sync should start at the first vgtid
 	esc, err := TableCursorToSerializedCursor(responses[nextVGtidPosition].Cursor)
@@ -442,15 +420,15 @@ func TestRead_CanStopAtWellKnownCursor(t *testing.T) {
 	assert.Equal(t, esc, sc)
 	assert.Equal(t, 2, cc.syncFnInvokedCount)
 
-	logLines := tal.logMessages[LOGLEVEL_INFO]
-	assert.Equal(t, "[connect-test:customers shard : -] Finished reading all rows for table [customers]", logLines[len(logLines)-1])
-	records := tal.records["connect-test.customers"]
+	logLines := tal.logMessages
+	assert.Equal(t, "[customers shard : -] Finished reading all rows for table [customers]", logLines[len(logLines)-1])
+	records := tal.records["customers"]
 	assert.Equal(t, 2*(nextVGtidPosition/3), len(records))
 }
 
 func TestRead_CanLogResults(t *testing.T) {
 	tma := getTestMysqlAccess()
-	tal := testAirbyteLogger{}
+	tal := testSingerLogger{}
 	ped := PlanetScaleEdgeDatabase{
 		Logger: &tal,
 		Mysql:  tma,
@@ -494,32 +472,59 @@ func TestRead_CanLogResults(t *testing.T) {
 	ps := PlanetScaleSource{
 		Database: "connect-test",
 	}
-	cs := ConfiguredStream{
-		Stream: Stream{
-			Name:      "products",
-			Namespace: "connect-test",
+	cs := Stream{
+		Name: "products",
+		Schema: StreamSchema{
+			Properties: map[string]StreamProperty{
+				"pid": {
+					Types: []string{"null", "integer"},
+				},
+				"description": {
+					Types: []string{"null", "string"},
+				},
+			},
+		},
+		Metadata: MetadataCollection{
+			Metadata{
+				Metadata: NodeMetadata{
+					Selected:   true,
+					BreadCrumb: []string{},
+				},
+			},
+			Metadata{
+				Metadata: NodeMetadata{
+					Selected:   true,
+					BreadCrumb: []string{"properties", "id"},
+				},
+			},
+			Metadata{
+				Metadata: NodeMetadata{
+					Selected:   true,
+					BreadCrumb: []string{"properties", "description"},
+				},
+			},
 		},
 	}
-	sc, err := ped.Read(context.Background(), os.Stdout, ps, cs, tc)
+	sc, err := ped.Read(context.Background(), ps, cs, tc)
 	assert.NoError(t, err)
 	assert.NotNil(t, sc)
-	assert.Equal(t, 2, len(tal.records["connect-test.products"]))
-	records := tal.records["connect-test.products"]
+	assert.Equal(t, 2, len(tal.records["products"]))
+	records := tal.records["products"]
 	keyboardFound := false
 	monitorFound := false
 	for _, r := range records {
-		id, err := r["pid"].(sqltypes.Value).ToInt64()
+		id, err := r.Data["pid"].(sqltypes.Value).ToInt64()
 		assert.NoError(t, err)
 		if id == 1 {
 			assert.False(t, keyboardFound, "should not find keyboard twice")
 			keyboardFound = true
-			assert.Equal(t, "keyboard", r["description"].(sqltypes.Value).ToString())
+			assert.Equal(t, "keyboard", r.Data["description"].(sqltypes.Value).ToString())
 		}
 
 		if id == 2 {
 			assert.False(t, monitorFound, "should not find monitor twice")
 			monitorFound = true
-			assert.Equal(t, "monitor", r["description"].(sqltypes.Value).ToString())
+			assert.Equal(t, "monitor", r.Data["description"].(sqltypes.Value).ToString())
 		}
 	}
 	assert.True(t, keyboardFound)
