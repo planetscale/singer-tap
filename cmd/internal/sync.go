@@ -2,12 +2,12 @@ package internal
 
 import (
 	"context"
+	"fmt"
 	"github.com/pkg/errors"
-	psdbconnect "github.com/planetscale/airbyte-source/proto/psdbconnect/v1alpha1"
 )
 
 func Sync(ctx context.Context, logger Logger, source PlanetScaleSource, catalog Catalog, state State) error {
-	s, err := filterSchema(catalog)
+	filteredSchema, err := filterSchema(catalog)
 	if err != nil {
 		return errors.Wrap(err, "unable to filter schema")
 	}
@@ -26,12 +26,14 @@ func Sync(ctx context.Context, logger Logger, source PlanetScaleSource, catalog 
 		return err
 	}
 
-	initialState, err := source.GetInitialState(source.Database, shards)
-	if err != nil {
-		return err
+	emptyState := generateEmptyState(source, filteredSchema, shards)
+	if emptyState == nil {
+		return errors.New("unable to generate empty state")
 	}
 
-	for _, stream := range s.Streams {
+	state = *emptyState
+
+	for _, stream := range filteredSchema.Streams {
 		logger.StreamSchema(stream)
 
 		// TODO : implement incremental sync
@@ -39,14 +41,36 @@ func Sync(ctx context.Context, logger Logger, source PlanetScaleSource, catalog 
 			return errors.New("Incrmental sync is not yet supported.")
 		}
 
-		for shard := range initialState.Shards {
-			ped.Read(ctx, source, stream, &psdbconnect.TableCursor{
-				Shard:    shard,
-				Keyspace: source.Database,
-			})
+		for shard, cursor := range state.Streams[stream.Name].Shards {
+			logger.Info(fmt.Sprintf("syncing rows from stream %q from shard %q", stream.Name, shard))
+			tc, err := cursor.SerializedCursorToTableCursor()
+			if err != nil {
+				return err
+			}
+
+			ped.Read(ctx, source, stream, tc)
 		}
 	}
-	return nil
+
+	return logger.State(state)
+}
+
+func generateEmptyState(source PlanetScaleSource, catalog Catalog, shards []string) *State {
+	var s State
+	initialState, err := source.GetInitialState(source.Database, shards)
+	if err != nil {
+		return nil
+	}
+
+	s = State{
+		Streams: map[string]ShardStates{},
+	}
+
+	for _, stream := range catalog.Streams {
+		s.Streams[stream.Name] = initialState
+	}
+
+	return &s
 }
 
 // filterSchema returns only the selected streams from a given catalog

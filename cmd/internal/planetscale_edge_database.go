@@ -65,7 +65,7 @@ func (p PlanetScaleEdgeDatabase) Read(ctx context.Context, ps PlanetScaleSource,
 	tabletType := psdbconnect.TabletType_primary
 	currentPosition := lastKnownPosition
 
-	readDuration := 1 * time.Minute
+	readDuration := 20 * time.Second
 	preamble := fmt.Sprintf("[%v shard : %v] ", table.Name, currentPosition.Shard)
 	for {
 		p.Logger.Info(preamble + "peeking to see if there's any new rows")

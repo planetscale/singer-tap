@@ -14,6 +14,7 @@ type Logger interface {
 	Schema(Catalog) error
 	StreamSchema(Stream) error
 	Record(Record, Stream) error
+	State(State) error
 	Flush(Stream)
 }
 
@@ -50,6 +51,17 @@ func (sl *singerLogger) Log(msg string) {
 	fmt.Fprintln(sl.stderr, sl.component+" : "+msg)
 }
 
+type StateMessage struct {
+	Type  string `json:"type"`
+	Value State  `json:"value"`
+}
+
+func (sl *singerLogger) State(state State) error {
+	return sl.recordEncoder.Encode(StateMessage{
+		Type:  "STATE",
+		Value: state,
+	})
+}
 func (sl *singerLogger) StreamSchema(stream Stream) error {
 	stream.Type = "SCHEMA"
 	return sl.recordEncoder.Encode(stream)

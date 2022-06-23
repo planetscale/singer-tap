@@ -8,14 +8,6 @@ import (
 	"vitess.io/vitess/go/sqltypes"
 )
 
-type ShardStates struct {
-	Shards map[string]*SerializedCursor `json:"shards"`
-}
-
-type SerializedCursor struct {
-	Cursor string `json:"cursor"`
-}
-
 func TableCursorToSerializedCursor(cursor *psdbconnect.TableCursor) (*SerializedCursor, error) {
 	d, err := codec.DefaultCodec.Marshal(cursor)
 	if err != nil {
@@ -349,17 +341,69 @@ func NewRecord() Record {
 // State represents any previously known state about the last sync operation
 // example :
 // {
-//  "bookmarks": {
-//    "orders": {
-//      "last_record": "2017-07-07T10:20:00Z"
+//  "bookmarks":
+//  {
+//    "branch_query":
+//    {
+//      "shards":
+//      {
+//        "80-c0":
+//        {
+//          "cursor": "Base64-encoded-tablecursor"
+//        }
+//      }
 //    },
-//    "customers": {
-//      "last_record": 123
+//    "branch_query_tag":
+//    {
+//      "shards":
+//      {
+//        "-40":
+//        {
+//          "cursor": "Base64-encoded-tablecursor"
+//        },
+//        "c0-":
+//        {
+//          "cursor": "Base64-encoded-tablecursor"
+//        },
+//        "40-80":
+//        {
+//         "cursor": "Base64-encoded-tablecursor"
+//        },
+//        "80-c0":
+//        {
+//          "cursor": "Base64-encoded-tablecursor"
+//        }
+//      }
 //    }
 //  }
 //}
 type State struct {
-	Bookmarks map[string]Bookmark `json:"bookmarks"`
+	Streams map[string]ShardStates `json:"bookmarks"`
+}
+
+type ShardStates struct {
+	Shards map[string]*SerializedCursor `json:"shards"`
+}
+
+type SerializedCursor struct {
+	Cursor string `json:"cursor"`
+}
+
+func (s SerializedCursor) SerializedCursorToTableCursor() (*psdbconnect.TableCursor, error) {
+	var (
+		tc psdbconnect.TableCursor
+	)
+	decoded, err := base64.StdEncoding.DecodeString(s.Cursor)
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to decode table cursor")
+	}
+
+	err = codec.DefaultCodec.Unmarshal(decoded, &tc)
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to deserialize table cursor")
+	}
+
+	return &tc, nil
 }
 
 type Bookmark struct {
