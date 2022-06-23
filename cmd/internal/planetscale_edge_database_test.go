@@ -17,7 +17,7 @@ func TestRead_CanPeekBeforeRead(t *testing.T) {
 	tma := getTestMysqlAccess()
 	b := bytes.NewBufferString("")
 	ped := PlanetScaleEdgeDatabase{
-		Logger: NewLogger(b),
+		Logger: NewLogger("test", b, b),
 		Mysql:  tma,
 	}
 	tc := &psdbconnect.TableCursor{
@@ -66,7 +66,7 @@ func TestRead_CanEarlyExitIfNoNewVGtidInPeek(t *testing.T) {
 	tma := getTestMysqlAccess()
 	b := bytes.NewBufferString("")
 	ped := PlanetScaleEdgeDatabase{
-		Logger: NewLogger(b),
+		Logger: NewLogger("test", b, b),
 		Mysql:  tma,
 	}
 	tc := &psdbconnect.TableCursor{
@@ -108,7 +108,7 @@ func TestRead_CanPickPrimaryForShardedKeyspaces(t *testing.T) {
 	tma := getTestMysqlAccess()
 	b := bytes.NewBufferString("")
 	ped := PlanetScaleEdgeDatabase{
-		Logger: NewLogger(b),
+		Logger: NewLogger("test", b, b),
 		Mysql:  tma,
 	}
 	tc := &psdbconnect.TableCursor{
