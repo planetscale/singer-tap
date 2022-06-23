@@ -29,6 +29,11 @@ func (tal *testSingerLogger) Error(message string) {
 	panic("implement me")
 }
 
+func (tal *testSingerLogger) State(state State) error {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (tal *testSingerLogger) Schema(catalog Catalog) error {
 	//TODO implement me
 	panic("implement me")
