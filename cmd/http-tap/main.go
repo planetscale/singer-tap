@@ -102,7 +102,7 @@ func parseInput(input string) (*internal.Stream, *internal.Record, error) {
 		return nil, nil, nil
 	}
 
-	return nil, nil, fmt.Errorf("Unknown message type : %v ", m.Type)
+	return nil, nil, fmt.Errorf("unknown message type : %v ", m.Type)
 }
 
 type MessageType struct {
