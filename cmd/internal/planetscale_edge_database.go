@@ -187,7 +187,7 @@ func (p PlanetScaleEdgeDatabase) sync(ctx context.Context, tc *psdbconnect.Table
 						Fields: result.Fields,
 					}
 					sqlResult.Rows = append(sqlResult.Rows, row)
-					// print AirbyteRecord messages to stdout here.
+					// print Singer messages to stdout here.
 					p.printQueryResult(sqlResult, s)
 				}
 			}
@@ -257,7 +257,7 @@ func (p PlanetScaleEdgeDatabase) getLatestCursorPosition(ctx context.Context, sh
 	}
 }
 
-// printQueryResult will pretty-print an AirbyteRecordMessage to the logger.
+// printQueryResult will pretty-print a Singer Record to the logger.
 // Copied from vtctl/query.go
 func (p PlanetScaleEdgeDatabase) printQueryResult(qr *sqltypes.Result, s Stream) {
 	data := QueryResultToRecords(qr)
