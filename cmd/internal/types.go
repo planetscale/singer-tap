@@ -5,6 +5,7 @@ import (
 	"github.com/pkg/errors"
 	psdbconnect "github.com/planetscale/airbyte-source/proto/psdbconnect/v1alpha1"
 	"github.com/planetscale/psdb/core/codec"
+	"vitess.io/vitess/go/sqltypes"
 )
 
 type ShardStates struct {
@@ -68,6 +69,9 @@ type Catalog struct {
 //  ]
 //}
 type Stream struct {
+	// Type is a constant of value "SCHEMA"
+	Type string `json:"type"`
+
 	// The name of the stream.
 	Name string `json:"stream"`
 
@@ -386,4 +390,25 @@ type ImportBatch struct {
 	// Each field in the list must be the name of a top-level property defined in the Schema object.
 	// Primary Key fields cannot be contained in an object or an array.
 	PrimaryKeys []string `json:"key_names"`
+}
+
+func QueryResultToRecords(qr *sqltypes.Result) []map[string]interface{} {
+	data := make([]map[string]interface{}, 0, len(qr.Rows))
+
+	columns := make([]string, 0, len(qr.Fields))
+	for _, field := range qr.Fields {
+		columns = append(columns, field.Name)
+	}
+
+	for _, row := range qr.Rows {
+		record := make(map[string]interface{})
+		for idx, val := range row {
+			if idx < len(columns) {
+				record[columns[idx]] = val
+			}
+		}
+		data = append(data, record)
+	}
+
+	return data
 }

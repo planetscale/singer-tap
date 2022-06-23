@@ -5,12 +5,15 @@ import (
 	"github.com/pkg/errors"
 )
 
-func Sync(ctx context.Context, logger *Logger, source PlanetScaleSource, catalog Catalog, state State) error {
-	_, err := filterSchema(catalog)
+func Sync(ctx context.Context, logger Logger, source PlanetScaleSource, catalog Catalog, state State) error {
+	s, err := filterSchema(catalog)
 	if err != nil {
 		return errors.Wrap(err, "unable to filter schema")
 	}
 
+	for _, stream := range s.Streams {
+		logger.StreamSchema(stream)
+	}
 	return nil
 }
 
