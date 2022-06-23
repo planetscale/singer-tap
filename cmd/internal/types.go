@@ -90,7 +90,7 @@ type Stream struct {
 	//  },
 	//  "breadcrumb" : ["properties", "some-field-name"]
 	//}
-	Metadata []Metadata `json:"metadata"`
+	Metadata MetadataCollection `json:"metadata"`
 
 	// A list of strings indicating which properties make up the primary key for this stream.
 	// Each item in the list must be the name of a top-level property defined in the schema
@@ -100,6 +100,10 @@ type Stream struct {
 	// Each item in the list must be the name of a top-level property defined in the schema.
 	CursorProperties []string `json:"bookmark_properties"`
 }
+
+//func (c *Catalog) GetStreamSchema(streamName string) (StreamSchema, error) {
+//
+//}
 
 type StreamSchema struct {
 	Type                    []string                  `json:"type"`
@@ -112,8 +116,80 @@ type StreamProperty struct {
 	CustomFormat string   `json:"format,omitempty"`
 }
 
+type MetadataCollection []Metadata
 type Metadata struct {
 	Metadata NodeMetadata `json:"metadata"`
+}
+
+// GetTableMetadata iterates the Metadata collection for a stream
+// and returns the metadata item that is associated with the stream.
+func (s *Stream) GetTableMetadata() (*Metadata, error) {
+	for _, m := range s.Metadata {
+		if len(m.Metadata.BreadCrumb) == 0 {
+			return &m, nil
+		}
+	}
+
+	return nil, errors.New("Unable to find Table Metadata")
+}
+
+// GetPropertyMap takes a MetadataCollection which is a flat slice of metadata values
+// and turns it into a map of property name to metadata item
+// input:
+// {
+//        "metadata":
+//        {
+//            "inclusion": "available",
+//            "breadcrumb":
+//            [ "properties", "dept_no" ]
+//        }
+//    },
+//    {
+//        "metadata":
+//        {
+//            "inclusion": "available",
+//            "breadcrumb": [ "properties", "dept_name"]
+//        }
+//    }
+//]
+// output :
+// {
+//        "dept_no":
+//        {
+//            "metadata":
+//            {
+//                "inclusion": "available",
+//                "breadcrumb":
+//                [
+//                    "properties",
+//                    "dept_no"
+//                ]
+//            }
+//        },
+//        "dept_name":
+//        {
+//            "metadata":
+//            {
+//                "inclusion": "available",
+//                "breadcrumb":
+//                [
+//                    "properties",
+//                    "dept_name"
+//                ]
+//            }
+//        }
+//    }
+func (m MetadataCollection) GetPropertyMap() map[string]Metadata {
+	propertyMap := make(map[string]Metadata, len(m)-1)
+	for _, nm := range m {
+		if len(nm.Metadata.BreadCrumb) > 0 {
+			// example for a stream: "breadcrumb": []
+			// example for a property: "breadcrumb": ["properties", "id"]
+			propertyName := nm.Metadata.BreadCrumb[len(nm.Metadata.BreadCrumb)-1]
+			propertyMap[propertyName] = nm
+		}
+	}
+	return propertyMap
 }
 
 func (s *Stream) GenerateMetadata(keyProperties []string) error {
@@ -275,4 +351,39 @@ type State struct {
 
 type Bookmark struct {
 	Cursor string `json:"last_record"`
+}
+
+// ImportMessage contains information about a record to be upserted into a table.
+type ImportMessage struct {
+	// This will always be upsert.
+	Action string `json:"action"`
+
+	// An integer that tells the Import API the order in which
+	// data points in the request body should be considered for loading.
+	// This data will be stored in the destination table in the _sdc_sequence column.
+	EmittedAt int64 `json:"sequence"`
+
+	// The record to be upserted into a table.
+	// The record data must conform to the JSON schema contained in the request’s Schema object.
+	Data map[string]interface{} `json:"data"`
+}
+
+// ImportBatch is an object containing a table name, a table schema,
+// and message objects representing records to be pushed to Stitch.
+type ImportBatch struct {
+	// The name of the destination table the data is being pushed to.
+	// Table names must be unique in each destination schema, or loading issues will occur.
+	Table string `json:"table_name"`
+
+	// A Schema object containing the JSON schema describing the record(s) in the Message object’s data property.
+	//Records must conform to this schema or an error will be returned when the request is sent.
+	Schema StreamSchema `json:"schema"`
+
+	// An array of Message objects, each representing a record to be upserted into the table.
+	Messages []ImportMessage `json:"messages"`
+
+	// An array of strings representing the Primary Key fields in the source table.
+	// Each field in the list must be the name of a top-level property defined in the Schema object.
+	// Primary Key fields cannot be contained in an object or an array.
+	PrimaryKeys []string `json:"key_names"`
 }

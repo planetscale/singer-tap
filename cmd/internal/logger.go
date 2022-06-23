@@ -17,12 +17,14 @@ type Logger interface {
 
 const MaxBatchSize = 10000
 
-func NewLogger(stdout io.Writer, stderr io.Writer) Logger {
-	sl := singerLogger{}
-	sl.writer = stdout
-	sl.stderr = stderr
-	sl.recordEncoder = json.NewEncoder(stdout)
-	sl.records = make([]Record, 0, MaxBatchSize)
+func NewLogger(component string, stdout io.Writer, stderr io.Writer) Logger {
+	sl := singerLogger{
+		writer:        stdout,
+		stderr:        stderr,
+		component:     component,
+		recordEncoder: json.NewEncoder(stdout),
+		records:       make([]Record, 0, MaxBatchSize),
+	}
 	return &sl
 }
 
@@ -31,6 +33,7 @@ type singerLogger struct {
 	writer        io.Writer
 	stderr        io.Writer
 	records       []Record
+	component     string
 }
 
 func (sl *singerLogger) Info(msg string) {
@@ -42,7 +45,7 @@ func (sl *singerLogger) Error(msg string) {
 }
 
 func (sl *singerLogger) Log(msg string) {
-	fmt.Fprintln(sl.stderr, "PlanetScale Tap : "+msg)
+	fmt.Fprintln(sl.stderr, sl.component+" : "+msg)
 }
 
 func (sl *singerLogger) Schema(schema Catalog) error {

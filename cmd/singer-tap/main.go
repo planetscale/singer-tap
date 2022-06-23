@@ -28,7 +28,7 @@ func init() {
 
 func main() {
 	flag.Parse()
-	logger := internal.NewLogger(os.Stdout, os.Stderr)
+	logger := internal.NewLogger("PlanetScale Tap", os.Stdout, os.Stderr)
 	err := execute(discoverMode, logger, configFilePath, catalogFilePath, stateFilePath)
 	if err != nil {
 		logger.Error(err.Error())
