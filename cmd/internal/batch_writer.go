@@ -83,7 +83,7 @@ func (h *httpBatchWriter) Flush(stream *Stream) error {
 		if err != nil {
 			return err
 		}
-		return fmt.Errorf("Server request failed with %s", body)
+		return fmt.Errorf("server request failed with %s", body)
 	}
 
 	var resp BatchResponse
