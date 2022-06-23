@@ -68,7 +68,9 @@ func execute(logger internal.Logger, apiUrl string, batchSize int, token string)
 
 		if r != nil {
 			logger.Info(fmt.Sprintf("found record message for stream %q in stdin", stream.Name))
-			batchWriter.Send(r, s)
+			if err := batchWriter.Send(r, stream); err != nil {
+				return err
+			}
 		}
 	}
 

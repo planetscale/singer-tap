@@ -101,7 +101,7 @@ func (h *httpBatchWriter) Flush(stream *Stream) error {
 
 func (h *httpBatchWriter) Send(record *Record, stream *Stream) error {
 	h.messages = append(h.messages, createImportMessage(record))
-	if len(h.messages) == MaxBatchSize {
+	if len(h.messages) >= MaxBatchSize {
 		h.Flush(stream)
 	}
 
