@@ -31,24 +31,29 @@ func Sync(ctx context.Context, logger Logger, source PlanetScaleSource, catalog 
 		return errors.New("unable to generate empty state")
 	}
 
-	state = *emptyState
-
 	for _, stream := range filteredSchema.Streams {
 		logger.StreamSchema(stream)
-
-		// TODO : implement incremental sync
+		var streamShardStates map[string]*SerializedCursor
 		if stream.IncrementalSyncRequested() {
-			return errors.New("Incrmental sync is not yet supported.")
+			logger.Info(fmt.Sprintf("Stream %q will be synced incrementally", stream.Name))
+			streamShardStates = state.Streams[stream.Name].Shards
+		} else {
+			streamShardStates = emptyState.Streams[stream.Name].Shards
 		}
 
-		for shard, cursor := range state.Streams[stream.Name].Shards {
+		for shard, cursor := range streamShardStates {
 			logger.Info(fmt.Sprintf("syncing rows from stream %q from shard %q", stream.Name, shard))
 			tc, err := cursor.SerializedCursorToTableCursor()
 			if err != nil {
 				return err
 			}
 
-			ped.Read(ctx, source, stream, tc)
+			logger.Info(fmt.Sprintf("stream's known position is %q", tc.Position))
+
+			state.Streams[stream.Name].Shards[shard], err = ped.Read(ctx, source, stream, tc)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
