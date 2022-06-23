@@ -77,3 +77,406 @@
     :why: 
     :versions: []
     :when: 2022-06-22 18:38:21.548087000 Z
+- - :approve
+  - github.com/DataDog/datadog-agent/pkg/obfuscate,
+  - &1
+    :who: 
+    :why: 
+    :versions: []
+    :when: 2022-06-23 19:41:56.766022000 Z
+- - :approve
+  - v0.35.1,
+  - *1
+- - :approve
+  - Apache 2.0
+  - *1
+- - :approve
+  - github.com/DataDog/datadog-go,
+  - &2
+    :who: 
+    :why: 
+    :versions: []
+    :when: 2022-06-23 19:41:57.357941000 Z
+- - :approve
+  - v4.8.3,
+  - *2
+- - :approve
+  - MIT
+  - *2
+- - :approve
+  - github.com/DataDog/datadog-go/v5,
+  - &3
+    :who: 
+    :why: 
+    :versions: []
+    :when: 2022-06-23 19:41:57.950041000 Z
+- - :approve
+  - v5.1.0,
+  - *3
+- - :approve
+  - MIT
+  - *3
+- - :approve
+  - github.com/DataDog/sketches-go,
+  - &4
+    :who: 
+    :why: 
+    :versions: []
+    :when: 2022-06-23 19:41:58.536869000 Z
+- - :approve
+  - v1.4.1,
+  - *4
+- - :approve
+  - unknown
+  - *4
+- - :approve
+  - github.com/beorn7/perks,
+  - &5
+    :who: 
+    :why: 
+    :versions: []
+    :when: 2022-06-23 19:41:59.123470000 Z
+- - :approve
+  - v1.0.1,
+  - *5
+- - :approve
+  - MIT
+  - *5
+- - :approve
+  - github.com/cespare/xxhash/v2,
+  - &6
+    :who: 
+    :why: 
+    :versions: []
+    :when: 2022-06-23 19:41:59.707283000 Z
+- - :approve
+  - v2.1.2,
+  - *6
+- - :approve
+  - MIT
+  - *6
+- - :approve
+  - github.com/dgraph-io/ristretto,
+  - &7
+    :who: 
+    :why: 
+    :versions: []
+    :when: 2022-06-23 19:42:00.293374000 Z
+- - :approve
+  - v0.1.0,
+  - *7
+- - :approve
+  - Apache 2.0
+  - *7
+- - :approve
+  - github.com/dustin/go-humanize,
+  - &8
+    :who: 
+    :why: 
+    :versions: []
+    :when: 2022-06-23 19:42:00.880476000 Z
+- - :approve
+  - v1.0.0,
+  - *8
+- - :approve
+  - MIT
+  - *8
+- - :approve
+  - github.com/golang/glog,
+  - &9
+    :who: 
+    :why: 
+    :versions: []
+    :when: 2022-06-23 19:42:01.470237000 Z
+- - :approve
+  - v1.0.0,
+  - *9
+- - :approve
+  - Apache 2.0
+  - *9
+- - :approve
+  - github.com/golang/snappy,
+  - &10
+    :who: 
+    :why: 
+    :versions: []
+    :when: 2022-06-23 19:42:02.057393000 Z
+- - :approve
+  - v0.0.4,
+  - *10
+- - :approve
+  - New BSD
+  - *10
+- - :approve
+  - github.com/google/uuid,
+  - &11
+    :who: 
+    :why: 
+    :versions: []
+    :when: 2022-06-23 19:42:02.647543000 Z
+- - :approve
+  - v1.3.0,
+  - *11
+- - :approve
+  - New BSD
+  - *11
+- - :approve
+  - github.com/grpc-ecosystem/go-grpc-middleware,
+  - &12
+    :who: 
+    :why: 
+    :versions: []
+    :when: 2022-06-23 19:42:03.236546000 Z
+- - :approve
+  - v1.3.0,
+  - *12
+- - :approve
+  - Apache 2.0
+  - *12
+- - :approve
+  - github.com/grpc-ecosystem/go-grpc-prometheus,
+  - &13
+    :who: 
+    :why: 
+    :versions: []
+    :when: 2022-06-23 19:42:03.830591000 Z
+- - :approve
+  - v1.2.0,
+  - *13
+- - :approve
+  - Apache 2.0
+  - *13
+- - :approve
+  - github.com/matttproud/golang_protobuf_extensions,
+  - &14
+    :who: 
+    :why: 
+    :versions: []
+    :when: 2022-06-23 19:42:04.417550000 Z
+- - :approve
+  - v1.0.2-0.20181231171920-c182affec369,
+  - *14
+- - :approve
+  - Apache 2.0
+  - *14
+- - :approve
+  - github.com/opentracing-contrib/go-grpc,
+  - &15
+    :who: 
+    :why: 
+    :versions: []
+    :when: 2022-06-23 19:42:05.009191000 Z
+- - :approve
+  - v0.0.0-20210225150812-73cb765af46e,
+  - *15
+- - :approve
+  - Apache 2.0
+  - *15
+- - :approve
+  - github.com/opentracing/opentracing-go,
+  - &16
+    :who: 
+    :why: 
+    :versions: []
+    :when: 2022-06-23 19:42:05.589200000 Z
+- - :approve
+  - v1.2.0,
+  - *16
+- - :approve
+  - Apache 2.0
+  - *16
+- - :approve
+  - github.com/philhofer/fwd,
+  - &17
+    :who: 
+    :why: 
+    :versions: []
+    :when: 2022-06-23 19:42:06.173533000 Z
+- - :approve
+  - v1.1.1,
+  - *17
+- - :approve
+  - MIT
+  - *17
+- - :approve
+  - github.com/prometheus/client_golang,
+  - &18
+    :who: 
+    :why: 
+    :versions: []
+    :when: 2022-06-23 19:42:06.755886000 Z
+- - :approve
+  - v1.12.1,
+  - *18
+- - :approve
+  - Apache 2.0
+  - *18
+- - :approve
+  - github.com/prometheus/client_model,
+  - &19
+    :who: 
+    :why: 
+    :versions: []
+    :when: 2022-06-23 19:42:07.346801000 Z
+- - :approve
+  - v0.2.0,
+  - *19
+- - :approve
+  - Apache 2.0
+  - *19
+- - :approve
+  - github.com/prometheus/common,
+  - &20
+    :who: 
+    :why: 
+    :versions: []
+    :when: 2022-06-23 19:42:07.942589000 Z
+- - :approve
+  - v0.34.0,
+  - *20
+- - :approve
+  - Apache 2.0, New BSD
+  - *20
+- - :approve
+  - github.com/prometheus/procfs,
+  - &21
+    :who: 
+    :why: 
+    :versions: []
+    :when: 2022-06-23 19:42:08.531372000 Z
+- - :approve
+  - v0.7.3,
+  - *21
+- - :approve
+  - Apache 2.0
+  - *21
+- - :approve
+  - github.com/segmentio/asm,
+  - &22
+    :who: 
+    :why: 
+    :versions: []
+    :when: 2022-06-23 19:42:09.119991000 Z
+- - :approve
+  - v1.2.0,
+  - *22
+- - :approve
+  - MIT
+  - *22
+- - :approve
+  - github.com/spf13/pflag,
+  - &23
+    :who: 
+    :why: 
+    :versions: []
+    :when: 2022-06-23 19:42:09.709149000 Z
+- - :approve
+  - v1.0.5,
+  - *23
+- - :approve
+  - New BSD
+  - *23
+- - :approve
+  - github.com/tinylib/msgp,
+  - &24
+    :who: 
+    :why: 
+    :versions: []
+    :when: 2022-06-23 19:42:10.336884000 Z
+- - :approve
+  - v1.1.6,
+  - *24
+- - :approve
+  - MIT
+  - *24
+- - :approve
+  - github.com/uber/jaeger-client-go,
+  - &25
+    :who: 
+    :why: 
+    :versions: []
+    :when: 2022-06-23 19:42:11.004112000 Z
+- - :approve
+  - v2.30.0,
+  - *25
+- - :approve
+  - Apache 2.0
+  - *25
+- - :approve
+  - github.com/uber/jaeger-lib,
+  - &26
+    :who: 
+    :why: 
+    :versions: []
+    :when: 2022-06-23 19:42:11.603697000 Z
+- - :approve
+  - v2.4.1,
+  - *26
+- - :approve
+  - Apache 2.0
+  - *26
+- - :approve
+  - go.uber.org/atomic,
+  - &27
+    :who: 
+    :why: 
+    :versions: []
+    :when: 2022-06-23 19:42:12.206589000 Z
+- - :approve
+  - v1.9.0,
+  - *27
+- - :approve
+  - MIT
+  - *27
+- - :approve
+  - golang.org/x/time,
+  - &28
+    :who: 
+    :why: 
+    :versions: []
+    :when: 2022-06-23 19:42:12.807901000 Z
+- - :approve
+  - v0.0.0-20220411224347-583f2d630306,
+  - *28
+- - :approve
+  - New BSD
+  - *28
+- - :approve
+  - golang.org/x/xerrors,
+  - &29
+    :who: 
+    :why: 
+    :versions: []
+    :when: 2022-06-23 19:42:13.419272000 Z
+- - :approve
+  - v0.0.0-20220411194840-2f41105eb62f,
+  - *29
+- - :approve
+  - New BSD
+  - *29
+- - :approve
+  - gopkg.in/DataDog/dd-trace-go.v1,
+  - &30
+    :who: 
+    :why: 
+    :versions: []
+    :when: 2022-06-23 19:42:14.036237000 Z
+- - :approve
+  - v1.38.1,
+  - *30
+- - :approve
+  - Apache 2.0, New BSD
+  - *30
+- - :approve
+  - k8s.io/apimachinery,
+  - &31
+    :who: 
+    :why: 
+    :versions: []
+    :when: 2022-06-23 19:42:14.691869000 Z
+- - :approve
+  - v0.24.2,
+  - *31
+- - :approve
+  - Apache 2.0, New BSD
+  - *31
