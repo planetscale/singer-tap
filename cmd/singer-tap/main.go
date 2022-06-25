@@ -40,7 +40,7 @@ func execute(discoverMode bool, logger internal.Logger, configFilePath, catalogF
 	var (
 		sourceConfig internal.PlanetScaleSource
 		catalog      internal.Catalog
-		state        internal.State
+		state        *internal.State
 		err          error
 	)
 
@@ -77,7 +77,7 @@ func execute(discoverMode bool, logger internal.Logger, configFilePath, catalogF
 	return sync(context.Background(), logger, sourceConfig, catalog, state)
 }
 
-func sync(ctx context.Context, logger internal.Logger, source internal.PlanetScaleSource, catalog internal.Catalog, state internal.State) error {
+func sync(ctx context.Context, logger internal.Logger, source internal.PlanetScaleSource, catalog internal.Catalog, state *internal.State) error {
 	logger.Info(fmt.Sprintf("Syncing records for PlanetScale database : %v", source.Database))
 	internal.Sync(ctx, logger, source, catalog, state)
 	return nil

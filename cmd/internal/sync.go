@@ -6,7 +6,8 @@ import (
 	"github.com/pkg/errors"
 )
 
-func Sync(ctx context.Context, logger Logger, source PlanetScaleSource, catalog Catalog, state State) error {
+func Sync(ctx context.Context, logger Logger, source PlanetScaleSource, catalog Catalog, state *State) error {
+	// The schema as its stored by Stitch needs to be filtered before it can be synced by the tap.
 	filteredSchema, err := filterSchema(catalog)
 	if err != nil {
 		return errors.Wrap(err, "unable to filter schema")
@@ -21,24 +22,49 @@ func Sync(ctx context.Context, logger Logger, source PlanetScaleSource, catalog 
 		Mysql:  mysql,
 		Logger: logger,
 	}
+	// get the list of vitess shards so we can generate the empty state for a sync operation.
 	shards, err := mysql.GetVitessShards(ctx, source)
 	if err != nil {
 		return err
 	}
 
-	emptyState := generateEmptyState(source, filteredSchema, shards)
-	if emptyState == nil {
+	// not all streams in a schema might need to be incrementally synced,
+	// generate an empty state that starts the sync at the beginning
+	// for any streams that require a FULL_TABLE sync.
+	beginningState := generateEmptyState(source, filteredSchema, shards)
+	if beginningState == nil {
 		return errors.New("unable to generate empty state")
 	}
 
+	// if there is no last known state, start from the beginning.
+	if state == nil {
+		state = beginningState
+	}
+
+	// For every stream processed by this loop, across all selected shards, we output the following messages
+	// ONE message of type SCHEMA with the schema of the stream that is being synced.
+	// MANY messages of type RECORD, one per row in the database for this stream.
+	// ONE-MANY messages of type STATE, which record the current state of the stream.
 	for _, stream := range filteredSchema.Streams {
+		// The first message before outputting any records for a stream
+		// should always be a SCHEMA message with the schema of the stream.
 		logger.StreamSchema(stream)
 		var streamShardStates map[string]*SerializedCursor
 		if stream.IncrementalSyncRequested() {
 			logger.Info(fmt.Sprintf("Stream %q will be synced incrementally", stream.Name))
-			streamShardStates = state.Streams[stream.Name].Shards
+			// Use the last known state of the stream if it exists.
+			if existingState, ok := state.Streams[stream.Name]; ok {
+				streamShardStates = existingState.Shards
+			} else {
+				// selected Stream does not have any previously recorded state,
+				// start from the beginning.
+				streamShardStates = beginningState.Streams[stream.Name].Shards
+				// copy the beginning cursor to the state
+				// so that we can update it when this stream syncs.
+				state.Streams[stream.Name] = beginningState.Streams[stream.Name]
+			}
 		} else {
-			streamShardStates = emptyState.Streams[stream.Name].Shards
+			streamShardStates = beginningState.Streams[stream.Name].Shards
 		}
 
 		for shard, cursor := range streamShardStates {
@@ -48,16 +74,20 @@ func Sync(ctx context.Context, logger Logger, source PlanetScaleSource, catalog 
 				return err
 			}
 
-			logger.Info(fmt.Sprintf("stream's known position is %q", tc.Position))
+			if len(tc.Position) > 0 {
+				logger.Info(fmt.Sprintf("stream's known position is %q", tc.Position))
+			}
 
 			state.Streams[stream.Name].Shards[shard], err = ped.Read(ctx, source, stream, tc)
 			if err != nil {
 				return err
 			}
+
+			logger.State(*state)
 		}
 	}
 
-	return logger.State(state)
+	return logger.State(*state)
 }
 
 func generateEmptyState(source PlanetScaleSource, catalog Catalog, shards []string) *State {
@@ -101,6 +131,13 @@ func filterSchema(catalog Catalog) (Catalog, error) {
 				// if field was selected
 				if propertyMetadataMap[name].Metadata.Selected {
 					fstream.Schema.Properties[name] = prop
+				}
+
+				// if this is a key property, it will always be selected.
+				for _, keyProp := range tableMetadata.Metadata.TableKeyProperties {
+					if name == keyProp {
+						fstream.Schema.Properties[name] = prop
+					}
 				}
 			}
 			filteredCatalog.Streams = append(filteredCatalog.Streams, fstream)
