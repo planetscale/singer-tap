@@ -265,6 +265,9 @@ func (p PlanetScaleEdgeDatabase) printQueryResult(qr *sqltypes.Result, s Stream)
 		subset := map[string]interface{}{}
 		for selectedProperty := range s.Schema.Properties {
 			subset[selectedProperty] = datum[selectedProperty]
+			if len(s.Schema.Properties[selectedProperty].CustomFormat) > 0 {
+				subset[selectedProperty] = datum[selectedProperty].(sqltypes.Value).ToString()
+			}
 		}
 		record := NewRecord()
 		record.Stream = s.Name

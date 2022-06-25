@@ -126,17 +126,20 @@ func filterSchema(catalog Catalog) (Catalog, error) {
 			// empty out the properties of this stream
 			// add back only the properties that are selected.
 			fstream.Schema.Properties = make(map[string]StreamProperty)
+			fstream.Metadata = MetadataCollection{}
 			propertyMetadataMap := stream.Metadata.GetPropertyMap()
 			for name, prop := range stream.Schema.Properties {
 				// if field was selected
 				if propertyMetadataMap[name].Metadata.Selected {
 					fstream.Schema.Properties[name] = prop
+					fstream.Metadata = append(fstream.Metadata, propertyMetadataMap[name])
 				}
 
 				// if this is a key property, it will always be selected.
 				for _, keyProp := range tableMetadata.Metadata.TableKeyProperties {
 					if name == keyProp {
 						fstream.Schema.Properties[name] = prop
+						fstream.Metadata = append(fstream.Metadata, propertyMetadataMap[name])
 					}
 				}
 			}
