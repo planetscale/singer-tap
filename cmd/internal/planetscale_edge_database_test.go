@@ -180,7 +180,7 @@ func TestDiscover_CanPickRightSingerType(t *testing.T) {
 		{
 			MysqlType:      "date",
 			JSONSchemaType: "string",
-			SingerType:     "date-time",
+			SingerType:     "",
 		},
 		{
 			MysqlType:      "text",
