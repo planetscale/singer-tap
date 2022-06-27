@@ -22,10 +22,15 @@ import (
 // that defines all the data access methods needed for the PlanetScale Singer Tap to function.
 type PlanetScaleDatabase interface {
 	CanConnect(ctx context.Context, ps PlanetScaleSource) error
-	DiscoverSchema(ctx context.Context, ps PlanetScaleSource) (Catalog, error)
-	ListShards(ctx context.Context, ps PlanetScaleSource) ([]string, error)
 	Read(ctx context.Context, ps PlanetScaleSource, s Stream, tc *psdbconnect.TableCursor) (*SerializedCursor, error)
 	Close() error
+}
+
+func NewEdge(mysql PlanetScaleEdgeMysqlAccess, logger Logger) PlanetScaleDatabase {
+	return &PlanetScaleEdgeDatabase{
+		Mysql:  mysql,
+		Logger: logger,
+	}
 }
 
 // PlanetScaleEdgeDatabase is an implementation of the PlanetScaleDatabase interface defined above.
@@ -43,10 +48,6 @@ func (p PlanetScaleEdgeDatabase) CanConnect(ctx context.Context, psc PlanetScale
 
 func (p PlanetScaleEdgeDatabase) Close() error {
 	return p.Mysql.Close()
-}
-
-func (p PlanetScaleEdgeDatabase) ListShards(ctx context.Context, psc PlanetScaleSource) ([]string, error) {
-	return p.Mysql.GetVitessShards(ctx, psc)
 }
 
 // Read streams rows from a table given a starting cursor.

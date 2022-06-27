@@ -6,24 +6,15 @@ import (
 	"github.com/pkg/errors"
 )
 
-func Sync(ctx context.Context, logger Logger, source PlanetScaleSource, catalog Catalog, state *State) error {
+func Sync(ctx context.Context, mysqlDatabase PlanetScaleEdgeMysqlAccess, edgeDatabase PlanetScaleDatabase, logger Logger, source PlanetScaleSource, catalog Catalog, state *State) error {
 	// The schema as its stored by Stitch needs to be filtered before it can be synced by the tap.
 	filteredSchema, err := filterSchema(catalog)
 	if err != nil {
 		return errors.Wrap(err, "unable to filter schema")
 	}
 
-	mysql, err := NewMySQL(&source)
-	if err != nil {
-		return errors.Wrap(err, "unable to create mysql connection")
-	}
-
-	ped := PlanetScaleEdgeDatabase{
-		Mysql:  mysql,
-		Logger: logger,
-	}
 	// get the list of vitess shards so we can generate the empty state for a sync operation.
-	shards, err := mysql.GetVitessShards(ctx, source)
+	shards, err := mysqlDatabase.GetVitessShards(ctx, source)
 	if err != nil {
 		return err
 	}
@@ -78,7 +69,7 @@ func Sync(ctx context.Context, logger Logger, source PlanetScaleSource, catalog 
 				logger.Info(fmt.Sprintf("stream's known position is %q", tc.Position))
 			}
 
-			state.Streams[stream.Name].Shards[shard], err = ped.Read(ctx, source, stream, tc)
+			state.Streams[stream.Name].Shards[shard], err = edgeDatabase.Read(ctx, source, stream, tc)
 			if err != nil {
 				return err
 			}

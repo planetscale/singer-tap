@@ -79,8 +79,12 @@ func execute(discoverMode bool, logger internal.Logger, configFilePath, catalogF
 
 func sync(ctx context.Context, logger internal.Logger, source internal.PlanetScaleSource, catalog internal.Catalog, state *internal.State) error {
 	logger.Info(fmt.Sprintf("Syncing records for PlanetScale database : %v", source.Database))
-	internal.Sync(ctx, logger, source, catalog, state)
-	return nil
+	mysql, err := internal.NewMySQL(&source)
+	if err != nil {
+		return errors.Wrap(err, "unable to create mysql connection")
+	}
+	ped := internal.NewEdge(mysql, logger)
+	return internal.Sync(ctx, mysql, ped, logger, source, catalog, state)
 }
 
 func discover(ctx context.Context, logger internal.Logger, source internal.PlanetScaleSource) error {
