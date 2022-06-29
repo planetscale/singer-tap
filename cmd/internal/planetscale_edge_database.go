@@ -180,17 +180,15 @@ func (p PlanetScaleEdgeDatabase) sync(ctx context.Context, tc *psdbconnect.Table
 		// if we get a newer vgtid.
 		watchForVgGtidChange = watchForVgGtidChange || tc.Position == stopPosition
 
-		if len(res.Result) > 0 {
-			for _, result := range res.Result {
-				qr := sqltypes.Proto3ToResult(result)
-				for _, row := range qr.Rows {
-					sqlResult := &sqltypes.Result{
-						Fields: result.Fields,
-					}
-					sqlResult.Rows = append(sqlResult.Rows, row)
-					// print Singer messages to stdout here.
-					p.printQueryResult(sqlResult, s)
+		for _, result := range res.Result {
+			qr := sqltypes.Proto3ToResult(result)
+			for _, row := range qr.Rows {
+				sqlResult := &sqltypes.Result{
+					Fields: result.Fields,
 				}
+				sqlResult.Rows = append(sqlResult.Rows, row)
+				// print Singer messages to stdout here.
+				p.printQueryResult(sqlResult, s)
 			}
 		}
 

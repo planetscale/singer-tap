@@ -74,7 +74,9 @@ func Sync(ctx context.Context, mysqlDatabase PlanetScaleEdgeMysqlAccess, edgeDat
 				return err
 			}
 
-			logger.State(*state)
+			if err := logger.State(*state); err != nil {
+				return errors.Wrap(err, "unable to serialize state")
+			}
 		}
 	}
 
