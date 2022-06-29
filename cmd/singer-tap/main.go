@@ -12,7 +12,6 @@ import (
 )
 
 var (
-	syncMode        bool
 	discoverMode    bool
 	catalogFilePath string
 	configFilePath  string
@@ -40,6 +39,8 @@ func execute(discoverMode bool, logger internal.Logger, configFilePath, catalogF
 
 	var (
 		sourceConfig internal.PlanetScaleSource
+		catalog      internal.Catalog
+		state        *internal.State
 		err          error
 	)
 
@@ -52,8 +53,6 @@ func execute(discoverMode bool, logger internal.Logger, configFilePath, catalogF
 		return fmt.Errorf("config file contents are invalid: %q", err)
 	}
 
-	syncMode = !discoverMode
-
 	if discoverMode {
 		logger.Info("running in discovery mode")
 		return discover(context.Background(), logger, sourceConfig)
@@ -63,11 +62,29 @@ func execute(discoverMode bool, logger internal.Logger, configFilePath, catalogF
 		return errors.New("Please specify path to a valid catalog file with the --catalog flag")
 	}
 
-	if syncMode {
-		logger.Info("running in sync mode")
+	catalog, err = parse(catalogFilePath, catalog)
+	if err != nil {
+		return fmt.Errorf("catalog file contents are invalid: %q", err)
 	}
 
-	return errors.New("SYNC mode is not supported yet")
+	if len(stateFilePath) > 0 {
+		state, err = parse(stateFilePath, state)
+		if err != nil {
+			return fmt.Errorf("state file contents are invalid: %q", err)
+		}
+	}
+
+	return sync(context.Background(), logger, sourceConfig, catalog, state)
+}
+
+func sync(ctx context.Context, logger internal.Logger, source internal.PlanetScaleSource, catalog internal.Catalog, state *internal.State) error {
+	logger.Info(fmt.Sprintf("Syncing records for PlanetScale database : %v", source.Database))
+	mysql, err := internal.NewMySQL(&source)
+	if err != nil {
+		return errors.Wrap(err, "unable to create mysql connection")
+	}
+	ped := internal.NewEdge(mysql, logger)
+	return internal.Sync(ctx, mysql, ped, logger, source, catalog, state)
 }
 
 func discover(ctx context.Context, logger internal.Logger, source internal.PlanetScaleSource) error {

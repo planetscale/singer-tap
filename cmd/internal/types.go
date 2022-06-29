@@ -5,15 +5,8 @@ import (
 	"github.com/pkg/errors"
 	psdbconnect "github.com/planetscale/airbyte-source/proto/psdbconnect/v1alpha1"
 	"github.com/planetscale/psdb/core/codec"
+	"vitess.io/vitess/go/sqltypes"
 )
-
-type ShardStates struct {
-	Shards map[string]*SerializedCursor `json:"shards"`
-}
-
-type SerializedCursor struct {
-	Cursor string `json:"cursor"`
-}
 
 func TableCursorToSerializedCursor(cursor *psdbconnect.TableCursor) (*SerializedCursor, error) {
 	d, err := codec.DefaultCodec.Marshal(cursor)
@@ -68,6 +61,9 @@ type Catalog struct {
 //  ]
 //}
 type Stream struct {
+	// Type is a constant of value "SCHEMA"
+	Type string `json:"type"`
+
 	// The name of the stream.
 	Name string `json:"stream"`
 
@@ -119,6 +115,15 @@ type StreamProperty struct {
 type MetadataCollection []Metadata
 type Metadata struct {
 	Metadata NodeMetadata `json:"metadata"`
+}
+
+func (s *Stream) IncrementalSyncRequested() bool {
+	tm, err := s.GetTableMetadata()
+	if err != nil {
+		return false
+	}
+
+	return tm.Metadata.ReplicationMethod == "INCREMENTAL"
 }
 
 // GetTableMetadata iterates the Metadata collection for a stream
@@ -336,17 +341,69 @@ func NewRecord() Record {
 // State represents any previously known state about the last sync operation
 // example :
 // {
-//  "bookmarks": {
-//    "orders": {
-//      "last_record": "2017-07-07T10:20:00Z"
+//  "bookmarks":
+//  {
+//    "branch_query":
+//    {
+//      "shards":
+//      {
+//        "80-c0":
+//        {
+//          "cursor": "Base64-encoded-tablecursor"
+//        }
+//      }
 //    },
-//    "customers": {
-//      "last_record": 123
+//    "branch_query_tag":
+//    {
+//      "shards":
+//      {
+//        "-40":
+//        {
+//          "cursor": "Base64-encoded-tablecursor"
+//        },
+//        "c0-":
+//        {
+//          "cursor": "Base64-encoded-tablecursor"
+//        },
+//        "40-80":
+//        {
+//         "cursor": "Base64-encoded-tablecursor"
+//        },
+//        "80-c0":
+//        {
+//          "cursor": "Base64-encoded-tablecursor"
+//        }
+//      }
 //    }
 //  }
 //}
 type State struct {
-	Bookmarks map[string]Bookmark `json:"bookmarks"`
+	Streams map[string]ShardStates `json:"bookmarks"`
+}
+
+type ShardStates struct {
+	Shards map[string]*SerializedCursor `json:"shards"`
+}
+
+type SerializedCursor struct {
+	Cursor string `json:"cursor"`
+}
+
+func (s SerializedCursor) SerializedCursorToTableCursor() (*psdbconnect.TableCursor, error) {
+	var (
+		tc psdbconnect.TableCursor
+	)
+	decoded, err := base64.StdEncoding.DecodeString(s.Cursor)
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to decode table cursor")
+	}
+
+	err = codec.DefaultCodec.Unmarshal(decoded, &tc)
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to deserialize table cursor")
+	}
+
+	return &tc, nil
 }
 
 type Bookmark struct {
@@ -386,4 +443,25 @@ type ImportBatch struct {
 	// Each field in the list must be the name of a top-level property defined in the Schema object.
 	// Primary Key fields cannot be contained in an object or an array.
 	PrimaryKeys []string `json:"key_names"`
+}
+
+func QueryResultToRecords(qr *sqltypes.Result) []map[string]interface{} {
+	data := make([]map[string]interface{}, 0, len(qr.Rows))
+
+	columns := make([]string, 0, len(qr.Fields))
+	for _, field := range qr.Fields {
+		columns = append(columns, field.Name)
+	}
+
+	for _, row := range qr.Rows {
+		record := make(map[string]interface{})
+		for idx, val := range row {
+			if idx < len(columns) {
+				record[columns[idx]] = val
+			}
+		}
+		data = append(data, record)
+	}
+
+	return data
 }

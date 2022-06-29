@@ -12,7 +12,10 @@ type Logger interface {
 	Info(message string)
 	Error(message string)
 	Schema(Catalog) error
-	Record(Record, string) error
+	StreamSchema(Stream) error
+	Record(Record, Stream) error
+	State(State) error
+	Flush(Stream)
 }
 
 const MaxBatchSize = 10000
@@ -48,23 +51,38 @@ func (sl *singerLogger) Log(msg string) {
 	fmt.Fprintln(sl.stderr, sl.component+" : "+msg)
 }
 
+type StateMessage struct {
+	Type  string `json:"type"`
+	Value State  `json:"value"`
+}
+
+func (sl *singerLogger) State(state State) error {
+	return sl.recordEncoder.Encode(StateMessage{
+		Type:  "STATE",
+		Value: state,
+	})
+}
+func (sl *singerLogger) StreamSchema(stream Stream) error {
+	stream.Type = "SCHEMA"
+	return sl.recordEncoder.Encode(stream)
+}
+
 func (sl *singerLogger) Schema(schema Catalog) error {
 	schema.Type = "SCHEMA"
 	return sl.recordEncoder.Encode(schema)
 }
 
-func (sl *singerLogger) Record(r Record, tableName string) error {
+func (sl *singerLogger) Record(r Record, s Stream) error {
 	now := time.Now()
 	r.TimeExtracted = now.Format(time.RFC3339Nano)
-	r.Stream = tableName
 	sl.records = append(sl.records, r)
 	if len(sl.records) == MaxBatchSize {
-		sl.Flush()
+		sl.Flush(s)
 	}
 	return nil
 }
 
-func (sl *singerLogger) Flush() {
+func (sl *singerLogger) Flush(s Stream) {
 	for _, record := range sl.records {
 		sl.recordEncoder.Encode(record)
 	}

@@ -1,79 +1,66 @@
 ---
-- - :approve
-  - github.com/go-sql-driver/mysql
+- - :permit
+  - bsd-2-clause
   - :who: 
     :why: 
     :versions: []
-    :when: 2022-06-22 18:37:26.248572000 Z
-- - :approve
-  - github.com/golang/protobuf
+    :when: 2022-02-23 19:12:45.769120000 Z
+- - :permit
+  - bsd-3-clause
   - :who: 
     :why: 
     :versions: []
-    :when: 2022-06-22 18:37:31.378514000 Z
-- - :approve
-  - github.com/pkg/errors,
+    :when: 2022-02-23 19:12:46.086065000 Z
+- - :permit
+  - apache-2.0
   - :who: 
     :why: 
     :versions: []
-    :when: 2022-06-22 18:37:35.041162000 Z
-- - :approve
-  - github.com/pkg/errors
+    :when: 2022-02-23 19:12:46.349451000 Z
+- - :permit
+  - MIT
   - :who: 
     :why: 
     :versions: []
-    :when: 2022-06-22 18:37:37.022421000 Z
-- - :approve
-  - github.com/planetscale/airbyte-source
+    :when: 2022-02-23 19:12:46.612078000 Z
+- - :permit
+  - ISC
   - :who: 
     :why: 
     :versions: []
-    :when: 2022-06-22 18:37:42.546556000 Z
+    :when: 2022-02-23 19:12:46.870618000 Z
+- - :permit
+  - mpl-2.0
+  - :who: 
+    :why: 
+    :versions: []
+    :when: 2022-02-23 19:12:47.136160000 Z
+- - :approve
+  - github.com/opentracing-contrib/go-grpc
+  - &1
+    :who: 
+    :why: 
+    :versions: []
+    :when: 2022-02-23 19:13:28.422698000 Z
+- - :approve
+  - apache-2.0
+  - *1
+- - :approve
+  - github.com/DataDog/sketches-go
+  - :who: 
+    :why: 
+    :versions: []
+    :when: 2022-03-10 17:00:10.855308000 Z
+- - :approve
+  - github.com/spf13/cobra
+  - :who: 
+    :why: 
+    :versions:
+    - v1.4.0
+    :when: 2022-04-20 14:34:59.545073000 Z
 - - :approve
   - github.com/planetscale/psdb
   - :who: 
     :why: 
     :versions: []
-    :when: 2022-06-22 18:38:17.618873000 Z
-- - :approve
-  - golang.org/x/net
-  - :who: 
-    :why: 
-    :versions: []
-    :when: 2022-06-22 18:38:18.179992000 Z
-- - :approve
-  - golang.org/x/sys
-  - :who: 
-    :why: 
-    :versions: []
-    :when: 2022-06-22 18:38:18.735946000 Z
-- - :approve
-  - golang.org/x/text
-  - :who: 
-    :why: 
-    :versions: []
-    :when: 2022-06-22 18:38:19.295097000 Z
-- - :approve
-  - google.golang.org/genproto
-  - :who: 
-    :why: 
-    :versions: []
-    :when: 2022-06-22 18:38:19.858950000 Z
-- - :approve
-  - google.golang.org/grpc
-  - :who: 
-    :why: 
-    :versions: []
-    :when: 2022-06-22 18:38:20.422057000 Z
-- - :approve
-  - google.golang.org/protobuf
-  - :who: 
-    :why: 
-    :versions: []
-    :when: 2022-06-22 18:38:20.984356000 Z
-- - :approve
-  - vitess.io/vitess
-  - :who: 
-    :why: 
-    :versions: []
-    :when: 2022-06-22 18:38:21.548087000 Z
+    :when: 2022-05-09 14:35:18.417215000 Z
