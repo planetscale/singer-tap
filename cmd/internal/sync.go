@@ -69,9 +69,13 @@ func Sync(ctx context.Context, mysqlDatabase PlanetScaleEdgeMysqlAccess, edgeDat
 				logger.Info(fmt.Sprintf("stream's known position is %q", tc.Position))
 			}
 
-			state.Streams[stream.Name].Shards[shard], err = edgeDatabase.Read(ctx, source, stream, tc)
+			newCursor, err := edgeDatabase.Read(ctx, source, stream, tc)
 			if err != nil {
 				return err
+			}
+
+			if newCursor != nil {
+				state.Streams[stream.Name].Shards[shard] = newCursor
 			}
 
 			if err := logger.State(*state); err != nil {
@@ -136,6 +140,13 @@ func filterSchema(catalog Catalog) (Catalog, error) {
 					}
 				}
 			}
+
+			// copy over the metadata item that refers to the Table.
+			tm, err := stream.GetTableMetadata()
+			if err != nil {
+				return filteredCatalog, err
+			}
+			fstream.Metadata = append(fstream.Metadata, *tm)
 			filteredCatalog.Streams = append(filteredCatalog.Streams, fstream)
 		}
 

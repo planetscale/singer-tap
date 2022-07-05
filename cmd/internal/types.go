@@ -135,7 +135,7 @@ func (s *Stream) GetTableMetadata() (*Metadata, error) {
 		}
 	}
 
-	return nil, errors.New("Unable to find Table Metadata")
+	return nil, errors.New("unable to find Table Metadata")
 }
 
 // GetPropertyMap takes a MetadataCollection which is a flat slice of metadata values
