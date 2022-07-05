@@ -83,7 +83,9 @@ func sync(ctx context.Context, logger internal.Logger, source internal.PlanetSca
 	if err != nil {
 		return errors.Wrap(err, "unable to create mysql connection")
 	}
+	defer mysql.Close()
 	ped := internal.NewEdge(mysql, logger)
+
 	return internal.Sync(ctx, mysql, ped, logger, source, catalog, state)
 }
 
@@ -93,6 +95,8 @@ func discover(ctx context.Context, logger internal.Logger, source internal.Plane
 	if err != nil {
 		return errors.Wrap(err, "unable to create mysql connection")
 	}
+	defer mysql.Close()
+
 	catalog, err := internal.Discover(ctx, source, mysql)
 	if err != nil {
 		return errors.Wrap(err, "unable to discover schema for PlanetScale database")

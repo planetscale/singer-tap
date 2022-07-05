@@ -344,7 +344,7 @@ func TestSync_PrintsNewStateIfFound(t *testing.T) {
 		Position: "i-STILL-know-what-you-synced-last-summer",
 	})
 	assert.Nil(t, err)
-	
+
 	ped := &testPlanetScaleEdgeDatabase{
 		ReadFn: func(ctx context.Context, ps PlanetScaleSource, s Stream, tc *psdbconnect.TableCursor) (*SerializedCursor, error) {
 			cursor = tc
