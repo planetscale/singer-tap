@@ -121,10 +121,6 @@ func saveState(logger internal.Logger, input string, path string) error {
 	statePath := filepath.Join(path, fmt.Sprintf("state-%v.json", now.UnixMilli()))
 	logger.Info(fmt.Sprintf("saving state to path : %v", statePath))
 
-	if _, err := os.OpenFile(statePath, os.O_CREATE, 0644); err != nil {
-		return errors.Wrap(err, "unable to create file to save state")
-	}
-
 	if err := ioutil.WriteFile(statePath, []byte(input), fs.ModePerm); err != nil {
 		logger.Error(fmt.Sprintf("unable to save state to path %v", statePath))
 		return errors.Wrap(err, "unable to save state")
