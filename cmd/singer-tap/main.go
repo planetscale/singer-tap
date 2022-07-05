@@ -12,6 +12,9 @@ import (
 )
 
 var (
+	version         string
+	commit          string
+	date            string
 	discoverMode    bool
 	catalogFilePath string
 	configFilePath  string
@@ -28,6 +31,7 @@ func init() {
 func main() {
 	flag.Parse()
 	logger := internal.NewLogger("PlanetScale Tap", os.Stdout, os.Stderr)
+	logger.Info(fmt.Sprintf("PlanetScale Singer Tap : version [%q], commit [%q], published on [%q]", version, commit, date))
 	err := execute(discoverMode, logger, configFilePath, catalogFilePath, stateFilePath)
 	if err != nil {
 		logger.Error(err.Error())
