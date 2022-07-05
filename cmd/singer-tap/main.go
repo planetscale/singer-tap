@@ -89,7 +89,11 @@ func sync(ctx context.Context, logger internal.Logger, source internal.PlanetSca
 
 func discover(ctx context.Context, logger internal.Logger, source internal.PlanetScaleSource) error {
 	logger.Info(fmt.Sprintf("Discovering Schema for PlanetScale database : %v", source.Database))
-	catalog, err := internal.Discover(ctx, source)
+	mysql, err := internal.NewMySQL(&source)
+	if err != nil {
+		return errors.Wrap(err, "unable to create mysql connection")
+	}
+	catalog, err := internal.Discover(ctx, source, mysql)
 	if err != nil {
 		return errors.Wrap(err, "unable to discover schema for PlanetScale database")
 	}

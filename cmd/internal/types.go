@@ -209,6 +209,15 @@ func (s *Stream) GenerateMetadata(keyProperties []string) error {
 		propertyMetadata.Metadata.BreadCrumb = []string{
 			"properties", key,
 		}
+		for _, kp := range keyProperties {
+			if kp == key {
+				// If this is set to automatic, the field should be replicated.
+				// Can be written by a tap during discovery
+				// Stitch requires that all key properties be replicated.
+				propertyMetadata.Metadata.Inclusion = "automatic"
+			}
+		}
+
 		s.Metadata = append(s.Metadata, propertyMetadata)
 	}
 	return nil

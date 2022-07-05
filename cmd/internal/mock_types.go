@@ -87,10 +87,16 @@ func (c *clientConnectionMock) Sync(ctx context.Context, in *psdbconnect.SyncReq
 }
 
 type mysqlAccessMock struct {
-	PingContextFn             func(ctx context.Context, source PlanetScaleSource) error
-	PingContextFnInvoked      bool
-	GetVitessTabletsFn        func(ctx context.Context, psc PlanetScaleSource) ([]VitessTablet, error)
-	GetVitessTabletsFnInvoked bool
+	PingContextFn                func(ctx context.Context, source PlanetScaleSource) error
+	PingContextFnInvoked         bool
+	GetVitessTabletsFn           func(ctx context.Context, psc PlanetScaleSource) ([]VitessTablet, error)
+	GetVitessTabletsFnInvoked    bool
+	GetTableNamesFn              func(ctx context.Context, source PlanetScaleSource) ([]string, error)
+	GetTableNamesFnInvoked       bool
+	GetTableSchemaFn             func(ctx context.Context, source PlanetScaleSource, s string) (map[string]StreamProperty, error)
+	GetTableSchemaFnInvoked      bool
+	GetTablePrimaryKeysFn        func(ctx context.Context, source PlanetScaleSource, s string) ([]string, error)
+	GetTablePrimaryKeysFnInvoked bool
 }
 
 func (tma *mysqlAccessMock) PingContext(ctx context.Context, source PlanetScaleSource) error {
@@ -98,19 +104,19 @@ func (tma *mysqlAccessMock) PingContext(ctx context.Context, source PlanetScaleS
 	return tma.PingContextFn(ctx, source)
 }
 
-func (mysqlAccessMock) GetTableNames(ctx context.Context, source PlanetScaleSource) ([]string, error) {
-	//TODO implement me
-	panic("implement me")
+func (tma *mysqlAccessMock) GetTableNames(ctx context.Context, source PlanetScaleSource) ([]string, error) {
+	tma.GetTableNamesFnInvoked = true
+	return tma.GetTableNamesFn(ctx, source)
 }
 
-func (mysqlAccessMock) GetTableSchema(ctx context.Context, source PlanetScaleSource, s string) (map[string]StreamProperty, error) {
-	//TODO implement me
-	panic("implement me")
+func (tma *mysqlAccessMock) GetTableSchema(ctx context.Context, source PlanetScaleSource, s string) (map[string]StreamProperty, error) {
+	tma.GetTableSchemaFnInvoked = true
+	return tma.GetTableSchemaFn(ctx, source, s)
 }
 
-func (mysqlAccessMock) GetTablePrimaryKeys(ctx context.Context, source PlanetScaleSource, s string) ([]string, error) {
-	//TODO implement me
-	panic("implement me")
+func (tma *mysqlAccessMock) GetTablePrimaryKeys(ctx context.Context, source PlanetScaleSource, s string) ([]string, error) {
+	tma.GetTablePrimaryKeysFnInvoked = true
+	return tma.GetTablePrimaryKeysFn(ctx, source, s)
 }
 
 func (mysqlAccessMock) QueryContext(ctx context.Context, psc PlanetScaleSource, query string, args ...interface{}) (*sql.Rows, error) {

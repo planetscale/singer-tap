@@ -123,7 +123,7 @@ func filterSchema(catalog Catalog) (Catalog, error) {
 			propertyMetadataMap := stream.Metadata.GetPropertyMap()
 			for name, prop := range stream.Schema.Properties {
 				// if field was selected
-				if propertyMetadataMap[name].Metadata.Selected {
+				if propertyMetadataMap[name].Metadata.Selected || propertyMetadataMap[name].Metadata.Inclusion == "automatic" {
 					fstream.Schema.Properties[name] = prop
 					fstream.Metadata = append(fstream.Metadata, propertyMetadataMap[name])
 				}
