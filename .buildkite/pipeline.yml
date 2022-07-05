@@ -38,15 +38,15 @@ steps:
           run: ci
   - wait
 
-    - block: ":rocket: Release !"
-      branches: "main"
+  - block: ":rocket: Release !"
+    branches: "main"
 
-    - command: script/bump-version.sh
-      if: build.branch == "main"
-      label: ":arrow_up_small: Bump & tag version"
+  - command: script/bump-version.sh
+    if: build.branch == "main"
+    label: ":arrow_up_small: Bump & tag version"
 
-    - wait
+  - wait
 
-    - label: ":github: Publishing artifacts"
-      if: build.branch == "main"
-      command: script/release.sh
+  - label: ":github: Publishing artifacts"
+    if: build.branch == "main"
+    command: script/release.sh
