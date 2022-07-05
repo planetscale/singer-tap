@@ -1,4 +1,4 @@
-project_name: pscale
+project_name: ps-singer-tap
 release:
   prerelease: auto # don't publish release with -rc1,-pre, etc suffixes
 before:
