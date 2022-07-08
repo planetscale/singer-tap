@@ -69,10 +69,16 @@ func Sync(ctx context.Context, mysqlDatabase PlanetScaleEdgeMysqlAccess, edgeDat
 				logger.Info(fmt.Sprintf("stream's known position is %q", tc.Position))
 			}
 
-			state.Streams[stream.Name].Shards[shard], err = edgeDatabase.Read(ctx, source, stream, tc)
+			newCursor, err := edgeDatabase.Read(ctx, source, stream, tc)
 			if err != nil {
 				return err
 			}
+
+			if newCursor == nil {
+				return errors.New("should return valid cursor, got nil")
+			}
+
+			state.Streams[stream.Name].Shards[shard] = newCursor
 
 			if err := logger.State(*state); err != nil {
 				return errors.Wrap(err, "unable to serialize state")
@@ -123,7 +129,7 @@ func filterSchema(catalog Catalog) (Catalog, error) {
 			propertyMetadataMap := stream.Metadata.GetPropertyMap()
 			for name, prop := range stream.Schema.Properties {
 				// if field was selected
-				if propertyMetadataMap[name].Metadata.Selected {
+				if propertyMetadataMap[name].Metadata.Selected || propertyMetadataMap[name].Metadata.Inclusion == "automatic" {
 					fstream.Schema.Properties[name] = prop
 					fstream.Metadata = append(fstream.Metadata, propertyMetadataMap[name])
 				}
@@ -136,6 +142,13 @@ func filterSchema(catalog Catalog) (Catalog, error) {
 					}
 				}
 			}
+
+			// copy over the metadata item that refers to the Table.
+			tm, err := stream.GetTableMetadata()
+			if err != nil {
+				return filteredCatalog, err
+			}
+			fstream.Metadata = append(fstream.Metadata, *tm)
 			filteredCatalog.Streams = append(filteredCatalog.Streams, fstream)
 		}
 

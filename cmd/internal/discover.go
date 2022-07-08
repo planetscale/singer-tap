@@ -6,13 +6,11 @@ import (
 	"github.com/pkg/errors"
 )
 
-func Discover(ctx context.Context, source PlanetScaleSource) (Catalog, error) {
+func Discover(ctx context.Context, source PlanetScaleSource, mysql PlanetScaleEdgeMysqlAccess) (Catalog, error) {
 	var c Catalog
-	mysql, err := NewMySQL(&source)
-	if err != nil {
-		return c, errors.Wrap(err, "unable to open mysql connection to PlanetScale Database")
+	if err := mysql.PingContext(ctx, source); err != nil {
+		return c, errors.Wrap(err, "unable to access PlanetScale Database")
 	}
-	defer mysql.Close()
 
 	tableNames, err := mysql.GetTableNames(ctx, source)
 	if err != nil {

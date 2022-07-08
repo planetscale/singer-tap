@@ -135,7 +135,7 @@ func (s *Stream) GetTableMetadata() (*Metadata, error) {
 		}
 	}
 
-	return nil, errors.New("Unable to find Table Metadata")
+	return nil, errors.New("unable to find Table Metadata")
 }
 
 // GetPropertyMap takes a MetadataCollection which is a flat slice of metadata values
@@ -209,6 +209,15 @@ func (s *Stream) GenerateMetadata(keyProperties []string) error {
 		propertyMetadata.Metadata.BreadCrumb = []string{
 			"properties", key,
 		}
+		for _, kp := range keyProperties {
+			if kp == key {
+				// If this is set to automatic, the field should be replicated.
+				// Can be written by a tap during discovery
+				// Stitch requires that all key properties be replicated.
+				propertyMetadata.Metadata.Inclusion = "automatic"
+			}
+		}
+
 		s.Metadata = append(s.Metadata, propertyMetadata)
 	}
 	return nil

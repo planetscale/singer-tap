@@ -536,6 +536,9 @@ func getTestMysqlAccess() *mysqlAccessMock {
 		PingContextFn: func(ctx context.Context, source PlanetScaleSource) error {
 			return nil
 		},
+		GetVitessShardsFn: func(ctx context.Context, psc PlanetScaleSource) ([]string, error) {
+			return []string{"-"}, nil
+		},
 		GetVitessTabletsFn: func(ctx context.Context, psc PlanetScaleSource) ([]VitessTablet, error) {
 			return []VitessTablet{
 				{
