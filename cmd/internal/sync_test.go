@@ -261,7 +261,7 @@ func TestSync_UsesStateIfIncrementalSyncRequested(t *testing.T) {
 	assert.Equal(t, source.Database, cursor.Keyspace)
 	assert.Equal(t, "-", cursor.Shard)
 	assert.Equal(t, "i-know-what-you-synced-last-summer", cursor.Position)
-	assert.Equal(t, "Stream \"employees\" will be synced incrementally", logger.logMessages[0])
+	assert.Equal(t, `Stream "employees" will be synced incrementally`, logger.logMessages[0])
 }
 
 func TestSync_PrintsOldStateIfNoNewStateFound(t *testing.T) {
