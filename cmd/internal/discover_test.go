@@ -120,10 +120,18 @@ func TestDiscover_SchemaHasValidMetadata(t *testing.T) {
 	assert.Len(t, c.Streams, 1)
 	emp := c.Streams[0]
 	mm := emp.Metadata.GetPropertyMap()
-	assert.Equal(t, "automatic", mm["emp_no"].Metadata.Inclusion, "key properties should be auto-included")
-	assert.Equal(t, mm["emp_no"].Metadata.BreadCrumb, []string{"properties", "emp_no"})
-	assert.Equal(t, mm["first_name"].Metadata.BreadCrumb, []string{"properties", "first_name"})
-	assert.Equal(t, "available", mm["first_name"].Metadata.Inclusion, "non-key properties should be selectable")
-	assert.Equal(t, mm["last_name"].Metadata.BreadCrumb, []string{"properties", "last_name"})
-	assert.Equal(t, "available", mm["last_name"].Metadata.Inclusion, "non-key properties should be selectable")
+	assert.Equal(t, NodeMetadata{
+		Inclusion:  "automatic",
+		BreadCrumb: []string{"properties", "emp_no"},
+	}, mm["emp_no"].Metadata, "key properties should be auto-included")
+
+	assert.Equal(t, NodeMetadata{
+		Inclusion:  "available",
+		BreadCrumb: []string{"properties", "first_name"},
+	}, mm["first_name"].Metadata, "non-key properties should be selectable")
+
+	assert.Equal(t, NodeMetadata{
+		Inclusion:  "available",
+		BreadCrumb: []string{"properties", "last_name"},
+	}, mm["last_name"].Metadata, "non-key properties should be selectable")
 }

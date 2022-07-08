@@ -13,7 +13,7 @@ func TestSync_CanFilterSchema(t *testing.T) {
 	ped := &testPlanetScaleEdgeDatabase{
 		ReadFn: func(ctx context.Context, ps PlanetScaleSource, s Stream, tc *psdbconnect.TableCursor) (*SerializedCursor, error) {
 			streamsRead = append(streamsRead, s.Name)
-			return nil, nil
+			return TableCursorToSerializedCursor(tc)
 		},
 	}
 	logger := &testSingerLogger{}
@@ -57,7 +57,7 @@ func TestSync_CanStartFromEmptyState(t *testing.T) {
 	ped := &testPlanetScaleEdgeDatabase{
 		ReadFn: func(ctx context.Context, ps PlanetScaleSource, s Stream, tc *psdbconnect.TableCursor) (*SerializedCursor, error) {
 			cursor = tc
-			return nil, nil
+			return TableCursorToSerializedCursor(tc)
 		},
 	}
 	logger := &testSingerLogger{}
@@ -91,7 +91,7 @@ func TestSync_PrintsStreamSchema(t *testing.T) {
 	tma := getTestMysqlAccess()
 	ped := &testPlanetScaleEdgeDatabase{
 		ReadFn: func(ctx context.Context, ps PlanetScaleSource, s Stream, tc *psdbconnect.TableCursor) (*SerializedCursor, error) {
-			return nil, nil
+			return TableCursorToSerializedCursor(tc)
 		},
 	}
 	logger := &testSingerLogger{}
@@ -153,7 +153,7 @@ func TestSync_PrintsStreamState(t *testing.T) {
 	tma := getTestMysqlAccess()
 	ped := &testPlanetScaleEdgeDatabase{
 		ReadFn: func(ctx context.Context, ps PlanetScaleSource, s Stream, tc *psdbconnect.TableCursor) (*SerializedCursor, error) {
-			return nil, nil
+			return TableCursorToSerializedCursor(tc)
 		},
 	}
 	logger := &testSingerLogger{}
@@ -216,7 +216,7 @@ func TestSync_UsesStateIfIncrementalSyncRequested(t *testing.T) {
 	ped := &testPlanetScaleEdgeDatabase{
 		ReadFn: func(ctx context.Context, ps PlanetScaleSource, s Stream, tc *psdbconnect.TableCursor) (*SerializedCursor, error) {
 			cursor = tc
-			return nil, nil
+			return TableCursorToSerializedCursor(tc)
 		},
 	}
 	logger := &testSingerLogger{}

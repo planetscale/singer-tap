@@ -74,9 +74,11 @@ func Sync(ctx context.Context, mysqlDatabase PlanetScaleEdgeMysqlAccess, edgeDat
 				return err
 			}
 
-			if newCursor != nil {
-				state.Streams[stream.Name].Shards[shard] = newCursor
+			if newCursor == nil {
+				return errors.New("should return valid cursor, got nil")
 			}
+
+			state.Streams[stream.Name].Shards[shard] = newCursor
 
 			if err := logger.State(*state); err != nil {
 				return errors.Wrap(err, "unable to serialize state")
