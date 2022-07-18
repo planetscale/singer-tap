@@ -266,7 +266,7 @@ func NewMetadata() Metadata {
 //      ]
 type NodeMetadata struct {
 	// Either true or false. Indicates that this node in the schema has been selected by the user for replication.
-	Selected bool `json:"selected,omitempty"`
+	Selected bool `json:"selected"`
 
 	// Either FULL_TABLE, INCREMENTAL, or LOG_BASED. The replication method to use for a stream.
 	ReplicationMethod string `json:"replication-method,omitempty"`
