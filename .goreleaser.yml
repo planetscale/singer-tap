@@ -78,3 +78,13 @@ brews:
     folder: Formula
     install: |
       bin.install "ps-singer-tap"
+  - name: ps-http-tap
+    homepage: "https://planetscale.com/"
+    description: "Singer.io HTTP Tap"
+    license: Apache 2.0
+    tap:
+      owner: planetscale
+      name: homebrew-tap
+    folder: Formula
+    install: |
+      bin.install "ps-http-tap"
