@@ -50,3 +50,31 @@ changelog:
       - '^docs:'
       - '^test:'
       - Merge pull request
+nfpms:
+  - maintainer: PlanetScale
+    description: The PlanetScale Singer.io Tap
+    homepage: https://github.com/planetscale/singer-tap
+    license: Apache 2.0
+    formats:
+      - deb
+      - rpm
+    replacements:
+      darwin: macOS
+scoop:
+  bucket:
+    owner: planetscale
+    name: scoop-bucket
+  homepage: "https://github.com/planetscale/singer-tap"
+  description: "The PlanetScale Singer.io Tap"
+  license: Apache 2.0
+brews:
+  - homepage: "https://planetscale.com/"
+    description: "The PlanetScale Singer.io Tap"
+    name: "ps-singer-tap"
+    license: Apache 2.0
+    tap:
+      owner: planetscale
+      name: homebrew-tap
+    folder: Formula
+    install: |
+      bin.install "ps-singer-tap"
