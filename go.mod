@@ -9,7 +9,6 @@ require (
 	github.com/planetscale/psdb v0.0.0-20220628194032-62bda3f9e8b2
 	github.com/stretchr/testify v1.7.1
 	google.golang.org/grpc v1.46.2
-	vitess.io/vitess v0.12.3
 )
 
 require (
@@ -56,4 +55,5 @@ require (
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 	k8s.io/api v0.24.2 // indirect
 	k8s.io/apimachinery v0.24.2 // indirect
+	vitess.io/vitess v0.14.0 // indirect
 )
