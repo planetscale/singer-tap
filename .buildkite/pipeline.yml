@@ -47,3 +47,13 @@ steps:
 
   - label: ":github: Publishing artifacts"
     command: script/release.sh
+    plugins:
+      - docker#v3.8.0:
+          image: "golang:1.18"
+          propagate-environment: true
+          environment:
+            - "GITHUB_TOKEN"
+            - "DOCKER_USERNAME"
+            - "DOCKER_PASSWORD"
+          volumes:
+            - "/var/run/docker.sock:/var/run/docker.sock"
