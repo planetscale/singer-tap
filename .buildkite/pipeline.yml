@@ -39,7 +39,6 @@ steps:
   - wait
 
   - block: ":rocket: Release !"
-    branches: "main"
 
   - command: script/bump-version.sh
     if: build.branch == "main"
