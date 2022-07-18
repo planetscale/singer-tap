@@ -9,7 +9,7 @@ require (
 	github.com/planetscale/psdb v0.0.0-20220628194032-62bda3f9e8b2
 	github.com/stretchr/testify v1.7.1
 	google.golang.org/grpc v1.46.2
-	vitess.io/vitess v0.12.3
+	vitess.io/vitess v0.14.0
 )
 
 require (
