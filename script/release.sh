@@ -11,7 +11,7 @@ apt-get update
 
 echo "--- installing goreleaser"
 
-curl -L -o /tmp/goreleaser_Linux_x86_64.tar.gz https://github.com/goreleaser/goreleaser/releases/download/v1.6.3/goreleaser_Linux_x86_64.tar.gz
+curl -L -o /tmp/goreleaser_Linux_x86_64.tar.gz https://github.com/goreleaser/goreleaser/releases/download/v1.10.2/goreleaser_Linux_x86_64.tar.gz
 
 cd /tmp && tar -zxvf goreleaser_Linux_x86_64.tar.gz
 
