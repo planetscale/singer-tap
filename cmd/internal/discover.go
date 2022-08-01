@@ -8,8 +8,9 @@ import (
 )
 
 type DiscoverSettings struct {
-	AutoSelectTables bool
-	ExcludedTables   []string
+	AutoSelectTables   bool
+	ExcludedTables     []string
+	UseIncrementalSync bool
 }
 
 func Discover(ctx context.Context, source PlanetScaleSource, mysql PlanetScaleEdgeMysqlAccess, settings DiscoverSettings) (Catalog, error) {
@@ -51,7 +52,7 @@ func Discover(ctx context.Context, source PlanetScaleSource, mysql PlanetScaleEd
 		}
 		table.KeyProperties = keyProperties
 		table.CursorProperties = keyProperties
-		table.GenerateMetadata(keyProperties, settings.AutoSelectTables)
+		table.GenerateMetadata(keyProperties, settings.AutoSelectTables, settings.UseIncrementalSync)
 
 		c.Streams = append(c.Streams, table)
 	}

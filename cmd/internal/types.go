@@ -197,9 +197,13 @@ func (m MetadataCollection) GetPropertyMap() map[string]Metadata {
 	return propertyMap
 }
 
-func (s *Stream) GenerateMetadata(keyProperties []string, autoSelect bool) error {
+func (s *Stream) GenerateMetadata(keyProperties []string, autoSelect, useIncrementalSync bool) error {
 	streamMetadata := NewMetadata(autoSelect)
 	streamMetadata.Metadata.TableKeyProperties = keyProperties
+	if useIncrementalSync {
+		streamMetadata.Metadata.ReplicationMethod = "INCREMENTAL"
+	}
+
 	streamMetadata.Metadata.ValidReplicationKeys = keyProperties
 	// need this to be an empty array since Singer needs an empty JSON array here.
 	streamMetadata.Metadata.BreadCrumb = []string{}

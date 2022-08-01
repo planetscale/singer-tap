@@ -14,15 +14,16 @@ import (
 )
 
 var (
-	version         string
-	commit          string
-	date            string
-	discoverMode    bool
-	catalogFilePath string
-	configFilePath  string
-	stateFilePath   string
-	autoSelect      bool
-	excludedTables  string
+	version            string
+	commit             string
+	date               string
+	discoverMode       bool
+	catalogFilePath    string
+	configFilePath     string
+	stateFilePath      string
+	autoSelect         bool
+	useIncrementalSync bool
+	excludedTables     string
 )
 
 func init() {
@@ -31,6 +32,7 @@ func init() {
 	flag.StringVar(&catalogFilePath, "catalog", "", "path to a catalog file for this tap")
 	flag.StringVar(&stateFilePath, "state", "", "path to state file for this configuration")
 	flag.BoolVar(&autoSelect, "auto-select", false, "(discover mode only) select all tables & columns in the schema")
+	flag.BoolVar(&useIncrementalSync, "incremental", false, "(discover mode only) all tables & views will be synced incrementally")
 	flag.StringVar(&excludedTables, "excluded-tables", "", "(discover mode only) comma separated list of tables & views to exclude.")
 }
 
@@ -66,7 +68,8 @@ func execute(discoverMode bool, logger internal.Logger, configFilePath, catalogF
 	if discoverMode {
 		logger.Info("running in discovery mode")
 		settings := internal.DiscoverSettings{
-			AutoSelectTables: autoSelect,
+			AutoSelectTables:   autoSelect,
+			UseIncrementalSync: useIncrementalSync,
 		}
 
 		if len(excludedTables) > 0 {
