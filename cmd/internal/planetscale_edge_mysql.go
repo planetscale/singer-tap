@@ -216,7 +216,7 @@ func getJsonSchemaType(mysqlType string) StreamProperty {
 		return StreamProperty{Types: []string{"null", "boolean"}}
 	case "date":
 		return StreamProperty{Types: []string{"null", "string"}}
-	case "datetime":
+	case "datetime", "timestamp":
 		return StreamProperty{Types: []string{"null", "string"}, CustomFormat: "date-time"}
 	default:
 		return StreamProperty{Types: []string{"null", "string"}}
