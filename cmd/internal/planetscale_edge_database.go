@@ -265,7 +265,11 @@ func (p PlanetScaleEdgeDatabase) printQueryResult(qr *sqltypes.Result, s Stream)
 		for selectedProperty := range s.Schema.Properties {
 			subset[selectedProperty] = datum[selectedProperty]
 			if len(s.Schema.Properties[selectedProperty].CustomFormat) > 0 {
-				subset[selectedProperty] = datum[selectedProperty].(sqltypes.Value).ToString()
+				if s.Schema.Properties[selectedProperty].CustomFormat == "date-time" {
+					subset[selectedProperty] = getISOTimeStamp(datum[selectedProperty].(sqltypes.Value).ToString())
+				} else {
+					subset[selectedProperty] = datum[selectedProperty].(sqltypes.Value).ToString()
+				}
 			}
 		}
 		record := NewRecord()
@@ -273,4 +277,12 @@ func (p PlanetScaleEdgeDatabase) printQueryResult(qr *sqltypes.Result, s Stream)
 		record.Data = subset
 		p.Logger.Record(record, s)
 	}
+}
+
+func getISOTimeStamp(value string) string {
+	p, err := time.Parse("2006-01-02 15:04:05", value)
+	if err != nil {
+		return ""
+	}
+	return p.Format(time.RFC3339)
 }
