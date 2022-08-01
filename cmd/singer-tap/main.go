@@ -101,7 +101,7 @@ func discover(ctx context.Context, logger internal.Logger, source internal.Plane
 	}
 	defer mysql.Close()
 
-	catalog, err := internal.Discover(ctx, source, mysql)
+	catalog, err := internal.Discover(ctx, source, mysql, internal.DiscoverSettings{})
 	if err != nil {
 		return errors.Wrap(err, "unable to discover schema for PlanetScale database")
 	}
