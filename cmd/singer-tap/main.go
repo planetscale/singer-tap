@@ -5,10 +5,12 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"github.com/pkg/errors"
-	"github.com/planetscale/singer-tap/cmd/internal"
 	"io/ioutil"
 	"os"
+	"strings"
+
+	"github.com/pkg/errors"
+	"github.com/planetscale/singer-tap/cmd/internal"
 )
 
 var (
@@ -19,6 +21,8 @@ var (
 	catalogFilePath string
 	configFilePath  string
 	stateFilePath   string
+	autoSelect      bool
+	excludedTables  string
 )
 
 func init() {
@@ -26,6 +30,8 @@ func init() {
 	flag.StringVar(&configFilePath, "config", "", "path to a configuration file for this tap")
 	flag.StringVar(&catalogFilePath, "catalog", "", "path to a catalog file for this tap")
 	flag.StringVar(&stateFilePath, "state", "", "path to state file for this configuration")
+	flag.BoolVar(&autoSelect, "auto-select", false, "(discover mode only) select all tables & columns in the schema")
+	flag.StringVar(&excludedTables, "excluded-tables", "", "(discover mode only) comma separated list of tables & views to exclude.")
 }
 
 func main() {
@@ -59,7 +65,15 @@ func execute(discoverMode bool, logger internal.Logger, configFilePath, catalogF
 
 	if discoverMode {
 		logger.Info("running in discovery mode")
-		return discover(context.Background(), logger, sourceConfig)
+		settings := internal.DiscoverSettings{
+			AutoSelectTables: autoSelect,
+		}
+
+		if len(excludedTables) > 0 {
+			settings.ExcludedTables = strings.Split(excludedTables, ",")
+		}
+
+		return discover(context.Background(), logger, sourceConfig, settings)
 	}
 
 	if len(catalogFilePath) == 0 {
@@ -93,7 +107,7 @@ func sync(ctx context.Context, logger internal.Logger, source internal.PlanetSca
 	return internal.Sync(ctx, mysql, ped, logger, source, catalog, state)
 }
 
-func discover(ctx context.Context, logger internal.Logger, source internal.PlanetScaleSource) error {
+func discover(ctx context.Context, logger internal.Logger, source internal.PlanetScaleSource, settings internal.DiscoverSettings) error {
 	logger.Info(fmt.Sprintf("Discovering Schema for PlanetScale database : %v", source.Database))
 	mysql, err := internal.NewMySQL(&source)
 	if err != nil {
@@ -101,7 +115,7 @@ func discover(ctx context.Context, logger internal.Logger, source internal.Plane
 	}
 	defer mysql.Close()
 
-	catalog, err := internal.Discover(ctx, source, mysql, internal.DiscoverSettings{})
+	catalog, err := internal.Discover(ctx, source, mysql, settings)
 	if err != nil {
 		return errors.Wrap(err, "unable to discover schema for PlanetScale database")
 	}
