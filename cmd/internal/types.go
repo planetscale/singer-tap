@@ -197,15 +197,19 @@ func (m MetadataCollection) GetPropertyMap() map[string]Metadata {
 	return propertyMap
 }
 
-func (s *Stream) GenerateMetadata(keyProperties []string) error {
-	streamMetadata := NewMetadata()
+func (s *Stream) GenerateMetadata(keyProperties []string, autoSelect, useIncrementalSync bool) error {
+	streamMetadata := NewMetadata(autoSelect)
 	streamMetadata.Metadata.TableKeyProperties = keyProperties
+	if useIncrementalSync {
+		streamMetadata.Metadata.ReplicationMethod = "INCREMENTAL"
+	}
+
 	streamMetadata.Metadata.ValidReplicationKeys = keyProperties
 	// need this to be an empty array since Singer needs an empty JSON array here.
 	streamMetadata.Metadata.BreadCrumb = []string{}
 	s.Metadata = append(s.Metadata, streamMetadata)
 	for key := range s.Schema.Properties {
-		propertyMetadata := NewMetadata()
+		propertyMetadata := NewMetadata(autoSelect)
 		propertyMetadata.Metadata.BreadCrumb = []string{
 			"properties", key,
 		}
@@ -222,11 +226,11 @@ func (s *Stream) GenerateMetadata(keyProperties []string) error {
 	}
 	return nil
 }
-func NewMetadata() Metadata {
+func NewMetadata(autoSelect bool) Metadata {
 	return Metadata{
 		Metadata: NodeMetadata{
 			Inclusion: "available",
-			Selected:  false,
+			Selected:  autoSelect,
 		},
 	}
 }
