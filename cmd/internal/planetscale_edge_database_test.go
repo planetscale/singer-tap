@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"testing"
+	"time"
+
 	psdbconnect "github.com/planetscale/airbyte-source/proto/psdbconnect/v1alpha1"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
-	"testing"
 	"vitess.io/vitess/go/sqltypes"
 	"vitess.io/vitess/go/vt/proto/query"
 )
@@ -446,10 +448,10 @@ func TestRead_CanLogResults(t *testing.T) {
 
 	result := []*query.QueryResult{
 		sqltypes.ResultToProto3(sqltypes.MakeTestResult(sqltypes.MakeTestFields(
-			"pid|description",
-			"int64|varbinary"),
-			"1|keyboard",
-			"2|monitor",
+			"pid|description|timestamp",
+			"int64|varbinary|timestamp"),
+			"1|keyboard|2006-01-02 15:04:05",
+			"2|monitor|2006-01-02 15:04:05",
 		)),
 	}
 
@@ -482,6 +484,10 @@ func TestRead_CanLogResults(t *testing.T) {
 				"description": {
 					Types: []string{"null", "string"},
 				},
+				"timestamp": {
+					Types:        []string{"null", "string"},
+					CustomFormat: "date-time",
+				},
 			},
 		},
 		Metadata: MetadataCollection{
@@ -503,6 +509,12 @@ func TestRead_CanLogResults(t *testing.T) {
 					BreadCrumb: []string{"properties", "description"},
 				},
 			},
+			Metadata{
+				Metadata: NodeMetadata{
+					Selected:   true,
+					BreadCrumb: []string{"properties", "timestamp"},
+				},
+			},
 		},
 	}
 	sc, err := ped.Read(context.Background(), ps, cs, tc)
@@ -515,6 +527,10 @@ func TestRead_CanLogResults(t *testing.T) {
 	for _, r := range records {
 		id, err := r.Data["pid"].(sqltypes.Value).ToInt64()
 		assert.NoError(t, err)
+
+		_, err = time.Parse(time.RFC3339, r.Data["timestamp"].(string))
+		assert.NoError(t, err, "should print timestamp as ISO 8601/RFC3339 values")
+
 		if id == 1 {
 			assert.False(t, keyboardFound, "should not find keyboard twice")
 			keyboardFound = true
