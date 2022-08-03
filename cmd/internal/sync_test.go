@@ -56,7 +56,9 @@ func TestSync_CanStartFromEmptyState(t *testing.T) {
 	var cursor *psdbconnect.TableCursor
 	ped := &testPlanetScaleEdgeDatabase{
 		ReadFn: func(ctx context.Context, ps PlanetScaleSource, s Stream, tc *psdbconnect.TableCursor) (*SerializedCursor, error) {
+			assert.Empty(t, tc.Position, "start position should be empty")
 			cursor = tc
+			cursor.Position = "I-HAVE-MOVED"
 			return TableCursorToSerializedCursor(tc)
 		},
 	}
@@ -72,8 +74,22 @@ func TestSync_CanStartFromEmptyState(t *testing.T) {
 				Metadata: MetadataCollection{
 					{
 						Metadata: NodeMetadata{
-							Selected:   true,
-							BreadCrumb: []string{},
+							ReplicationMethod: "INCREMENTAL",
+							Selected:          true,
+							BreadCrumb:        []string{},
+						},
+					},
+				},
+			},
+			{
+				Name:      "customers",
+				TableName: "customers",
+				Metadata: MetadataCollection{
+					{
+						Metadata: NodeMetadata{
+							ReplicationMethod: "INCREMENTAL",
+							Selected:          true,
+							BreadCrumb:        []string{},
 						},
 					},
 				},
