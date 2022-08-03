@@ -90,17 +90,15 @@ func Sync(ctx context.Context, mysqlDatabase PlanetScaleEdgeMysqlAccess, edgeDat
 }
 
 func generateEmptyState(source PlanetScaleSource, catalog Catalog, shards []string) *State {
-	var s State
-	initialState, err := source.GetInitialState(source.Database, shards)
-	if err != nil {
-		return nil
-	}
-
-	s = State{
+	s := State{
 		Streams: map[string]ShardStates{},
 	}
 
 	for _, stream := range catalog.Streams {
+		initialState, err := source.GetInitialState(source.Database, shards)
+		if err != nil {
+			return nil
+		}
 		s.Streams[stream.Name] = initialState
 	}
 
