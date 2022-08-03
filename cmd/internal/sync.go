@@ -90,9 +90,7 @@ func Sync(ctx context.Context, mysqlDatabase PlanetScaleEdgeMysqlAccess, edgeDat
 }
 
 func generateEmptyState(source PlanetScaleSource, catalog Catalog, shards []string) *State {
-	var s State
-
-	s = State{
+	s := State{
 		Streams: map[string]ShardStates{},
 	}
 
