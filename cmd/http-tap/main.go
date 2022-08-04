@@ -23,7 +23,7 @@ var (
 
 func init() {
 	flag.StringVar(&singerAPIURL, "api-url", "https://api.stitchdata.com", "API Url for Singer")
-	flag.IntVar(&batchSize, "batch-size", 20, "size of each batch sent to Singer, default is 20")
+	flag.IntVar(&batchSize, "batch-size", 9000, "size of each batch sent to Singer, default is 9000")
 	flag.StringVar(&apiToken, "api-token", "", "API Token to authenticate with Singer")
 	flag.StringVar(&stateDirectory, "state-directory", "state", "Directory to save any received state, default is state/")
 }
@@ -146,10 +146,6 @@ func saveState(logger internal.Logger, input string, path string) error {
 		return errors.Wrap(err, "unable to save state")
 	}
 	return nil
-}
-
-type State struct {
-	Value string `json:"value"`
 }
 
 type MessageType struct {
