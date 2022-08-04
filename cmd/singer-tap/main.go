@@ -53,6 +53,7 @@ func execute(discoverMode bool, logger internal.Logger, configFilePath, catalogF
 		sourceConfig internal.PlanetScaleSource
 		catalog      internal.Catalog
 		state        *internal.State
+		wrappedState *internal.WrappedState
 		err          error
 	)
 
@@ -92,6 +93,15 @@ func execute(discoverMode bool, logger internal.Logger, configFilePath, catalogF
 		state, err = parse(stateFilePath, state)
 		if err != nil {
 			return fmt.Errorf("state file contents are invalid: %q", err)
+		}
+		if state == nil || len(state.Streams) == 0 {
+			wrappedState, err = parse(stateFilePath, wrappedState)
+			if err != nil {
+				return fmt.Errorf("state file contents are invalid: %q", err)
+			}
+			if wrappedState != nil {
+				state = &wrappedState.Value
+			}
 		}
 	}
 
