@@ -828,3 +828,15 @@
     :why: 
     :versions: []
     :when: 2022-07-05 15:16:32.692161000 Z
+- - :approve
+  - github.com/hashicorp/go-cleanhttp
+  - :who: 
+    :why: 
+    :versions: []
+    :when: 2022-08-04 18:06:35.048921000 Z
+- - :approve
+  - github.com/hashicorp/go-retryablehttp
+  - :who: 
+    :why: 
+    :versions: []
+    :when: 2022-08-04 18:06:40.047937000 Z
