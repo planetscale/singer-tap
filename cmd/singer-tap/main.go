@@ -22,6 +22,7 @@ var (
 	autoSelect         bool
 	useIncrementalSync bool
 	excludedTables     string
+	indexRows          bool
 )
 
 func init() {
@@ -31,6 +32,7 @@ func init() {
 	flag.StringVar(&stateFilePath, "state", "", "path to state file for this configuration")
 	flag.BoolVar(&autoSelect, "auto-select", false, "(discover mode only) select all tables & columns in the schema")
 	flag.BoolVar(&useIncrementalSync, "incremental", false, "(discover mode only) all tables & views will be synced incrementally")
+	flag.BoolVar(&indexRows, "index-rows", false, "index all rows in the output")
 	flag.StringVar(&excludedTables, "excluded-tables", "", "(discover mode only) comma separated list of tables & views to exclude.")
 }
 
@@ -105,7 +107,7 @@ func sync(ctx context.Context, logger internal.Logger, source internal.PlanetSca
 	defer mysql.Close()
 	ped := internal.NewEdge(mysql, logger)
 
-	return internal.Sync(ctx, mysql, ped, logger, source, catalog, state)
+	return internal.Sync(ctx, mysql, ped, logger, source, catalog, state, indexRows)
 }
 
 func discover(ctx context.Context, logger internal.Logger, source internal.PlanetScaleSource, settings internal.DiscoverSettings) error {

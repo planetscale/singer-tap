@@ -6,7 +6,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func Sync(ctx context.Context, mysqlDatabase PlanetScaleEdgeMysqlAccess, edgeDatabase PlanetScaleDatabase, logger Logger, source PlanetScaleSource, catalog Catalog, state *State) error {
+func Sync(ctx context.Context, mysqlDatabase PlanetScaleEdgeMysqlAccess, edgeDatabase PlanetScaleDatabase, logger Logger, source PlanetScaleSource, catalog Catalog, state *State, indexRows bool) error {
 	// The schema as its stored by Stitch needs to be filtered before it can be synced by the tap.
 	filteredSchema, err := filterSchema(catalog)
 	if err != nil {
@@ -69,7 +69,7 @@ func Sync(ctx context.Context, mysqlDatabase PlanetScaleEdgeMysqlAccess, edgeDat
 				logger.Info(fmt.Sprintf("stream's known position is %q", tc.Position))
 			}
 
-			newCursor, err := edgeDatabase.Read(ctx, source, stream, tc)
+			newCursor, err := edgeDatabase.Read(ctx, source, stream, tc, indexRows)
 			if err != nil {
 				return err
 			}
