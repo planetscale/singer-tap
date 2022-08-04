@@ -17,6 +17,7 @@ import (
 var (
 	singerAPIURL   string
 	batchSize      int
+	bufferSize     int
 	apiToken       string
 	stateDirectory string
 )
@@ -26,26 +27,30 @@ func init() {
 	flag.IntVar(&batchSize, "batch-size", 9000, "size of each batch sent to Singer, default is 9000")
 	flag.StringVar(&apiToken, "api-token", "", "API Token to authenticate with Singer")
 	flag.StringVar(&stateDirectory, "state-directory", "state", "Directory to save any received state, default is state/")
+	flag.IntVar(&bufferSize, "buffer-size", 1024, "size of the buffer used to read lines from STDIN, default is 1024")
 }
 
 func main() {
 	flag.Parse()
 
 	logger := internal.NewLogger("HTTP Tap", os.Stdout, os.Stderr)
-	err := execute(logger, singerAPIURL, batchSize, apiToken)
+	err := execute(logger, singerAPIURL, batchSize, bufferSize, apiToken)
 	if err != nil {
 		logger.Error(err.Error())
 		os.Exit(1)
 	}
 }
 
-func execute(logger internal.Logger, apiUrl string, batchSize int, token string) error {
+func execute(logger internal.Logger, apiUrl string, batchSize, bufferSize int, token string) error {
 
 	if len(token) == 0 {
 		return errors.New("Please specify a valid apiToken with the --api-token flag")
 	}
 
+	maxBufferSize := bufferSize * 1024
+	buf := make([]byte, maxBufferSize)
 	scanner := bufio.NewScanner(os.Stdin)
+	scanner.Buffer(buf, maxBufferSize)
 
 	var (
 		stream *internal.Stream
@@ -53,7 +58,6 @@ func execute(logger internal.Logger, apiUrl string, batchSize int, token string)
 
 	recordCount := 0
 	batchWriter := internal.NewBatchWriter(batchSize, logger, apiUrl, apiToken)
-
 	for scanner.Scan() {
 		s, r, err := parseInput(scanner.Text(), logger)
 		if err != nil {
