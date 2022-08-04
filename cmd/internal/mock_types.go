@@ -29,7 +29,7 @@ func (tal *testSingerLogger) Info(message string) {
 type testPlanetScaleEdgeDatabase struct {
 	CanConnectFn        func(ctx context.Context, ps PlanetScaleSource) error
 	CanConnectFnInvoked bool
-	ReadFn              func(ctx context.Context, ps PlanetScaleSource, s Stream, tc *psdbconnect.TableCursor) (*SerializedCursor, error)
+	ReadFn              func(ctx context.Context, ps PlanetScaleSource, s Stream, tc *psdbconnect.TableCursor, indexRows bool) (*SerializedCursor, error)
 	ReadFnInvoked       bool
 }
 
@@ -38,9 +38,9 @@ func (tpe *testPlanetScaleEdgeDatabase) CanConnect(ctx context.Context, ps Plane
 	return tpe.CanConnectFn(ctx, ps)
 }
 
-func (tpe *testPlanetScaleEdgeDatabase) Read(ctx context.Context, ps PlanetScaleSource, s Stream, tc *psdbconnect.TableCursor) (*SerializedCursor, error) {
+func (tpe *testPlanetScaleEdgeDatabase) Read(ctx context.Context, ps PlanetScaleSource, s Stream, tc *psdbconnect.TableCursor, indexRows bool) (*SerializedCursor, error) {
 	tpe.ReadFnInvoked = true
-	return tpe.ReadFn(ctx, ps, s, tc)
+	return tpe.ReadFn(ctx, ps, s, tc, indexRows)
 }
 
 func (tpe *testPlanetScaleEdgeDatabase) Close() error {
