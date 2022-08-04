@@ -2,10 +2,8 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strings"
 
@@ -24,6 +22,7 @@ var (
 	autoSelect         bool
 	useIncrementalSync bool
 	excludedTables     string
+	indexRows          bool
 )
 
 func init() {
@@ -33,6 +32,7 @@ func init() {
 	flag.StringVar(&stateFilePath, "state", "", "path to state file for this configuration")
 	flag.BoolVar(&autoSelect, "auto-select", false, "(discover mode only) select all tables & columns in the schema")
 	flag.BoolVar(&useIncrementalSync, "incremental", false, "(discover mode only) all tables & views will be synced incrementally")
+	flag.BoolVar(&indexRows, "index-rows", false, "index all rows in the output")
 	flag.StringVar(&excludedTables, "excluded-tables", "", "(discover mode only) comma separated list of tables & views to exclude.")
 }
 
@@ -60,7 +60,7 @@ func execute(discoverMode bool, logger internal.Logger, configFilePath, catalogF
 		return errors.New("Please specify path to a valid configuration file with the --config flag")
 	}
 
-	sourceConfig, err = parse(configFilePath, sourceConfig)
+	sourceConfig, err = internal.Parse(configFilePath, sourceConfig)
 	if err != nil {
 		return fmt.Errorf("config file contents are invalid: %q", err)
 	}
@@ -83,13 +83,13 @@ func execute(discoverMode bool, logger internal.Logger, configFilePath, catalogF
 		return errors.New("Please specify path to a valid catalog file with the --catalog flag")
 	}
 
-	catalog, err = parse(catalogFilePath, catalog)
+	catalog, err = internal.Parse(catalogFilePath, catalog)
 	if err != nil {
 		return fmt.Errorf("catalog file contents are invalid: %q", err)
 	}
 
 	if len(stateFilePath) > 0 {
-		state, err = parse(stateFilePath, state)
+		state, err = internal.ParseSavedState(stateFilePath)
 		if err != nil {
 			return fmt.Errorf("state file contents are invalid: %q", err)
 		}
@@ -107,7 +107,7 @@ func sync(ctx context.Context, logger internal.Logger, source internal.PlanetSca
 	defer mysql.Close()
 	ped := internal.NewEdge(mysql, logger)
 
-	return internal.Sync(ctx, mysql, ped, logger, source, catalog, state)
+	return internal.Sync(ctx, mysql, ped, logger, source, catalog, state, indexRows)
 }
 
 func discover(ctx context.Context, logger internal.Logger, source internal.PlanetScaleSource, settings internal.DiscoverSettings) error {
@@ -124,16 +124,4 @@ func discover(ctx context.Context, logger internal.Logger, source internal.Plane
 	}
 
 	return logger.Schema(catalog)
-}
-
-func parse[T any](path string, obj T) (T, error) {
-	b, err := ioutil.ReadFile(path)
-	if err != nil {
-		return obj, errors.Wrapf(err, "unable to read file at path %v", path)
-	}
-
-	if err = json.Unmarshal(b, &obj); err != nil {
-		return obj, err
-	}
-	return obj, nil
 }

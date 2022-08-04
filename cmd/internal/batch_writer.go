@@ -4,14 +4,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/hashicorp/go-retryablehttp"
 	"io/ioutil"
-	"net/http"
 	"time"
 )
-
-// MaxImportBatchSize represents the maximum items we can send in each batch request to Stitch.
-// Each data object in the request body cannot exceed 10,000 individual data points.
-const MaxImportBatchSize = 10000
 
 type BatchWriter interface {
 	Flush(stream *Stream) error
@@ -19,15 +15,17 @@ type BatchWriter interface {
 }
 
 func NewBatchWriter(batchSize int, logger Logger, apiURL, apiToken string) BatchWriter {
+	client := retryablehttp.NewClient()
+	// Wait 3 seconds before retrying
+	client.RetryWaitMin = 3 * time.Second
+	client.Logger = nil
 	return &httpBatchWriter{
 		batchSize: batchSize,
 		apiURL:    apiURL,
 		apiToken:  apiToken,
 		logger:    logger,
-		client: &http.Client{
-			Timeout: time.Second * 10,
-		},
-		messages: make([]ImportMessage, 0, batchSize),
+		client:    client,
+		messages:  make([]ImportMessage, 0, batchSize),
 	}
 }
 
@@ -36,7 +34,7 @@ type httpBatchWriter struct {
 	apiURL    string
 	apiToken  string
 	logger    Logger
-	client    *http.Client
+	client    *retryablehttp.Client
 	messages  []ImportMessage
 }
 
@@ -64,7 +62,7 @@ func (h *httpBatchWriter) Flush(stream *Stream) error {
 		return err
 	}
 
-	stitch, err := http.NewRequest("POST", h.apiURL+"/v2/import/batch", bytes.NewBuffer(b))
+	stitch, err := retryablehttp.NewRequest("POST", h.apiURL+"/v2/import/batch", bytes.NewBuffer(b))
 	if err != nil {
 		return err
 	}

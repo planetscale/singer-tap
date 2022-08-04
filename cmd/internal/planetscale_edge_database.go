@@ -22,7 +22,7 @@ import (
 // that defines all the data access methods needed for the PlanetScale Singer Tap to function.
 type PlanetScaleDatabase interface {
 	CanConnect(ctx context.Context, ps PlanetScaleSource) error
-	Read(ctx context.Context, ps PlanetScaleSource, s Stream, tc *psdbconnect.TableCursor) (*SerializedCursor, error)
+	Read(ctx context.Context, ps PlanetScaleSource, s Stream, tc *psdbconnect.TableCursor, indexRows bool) (*SerializedCursor, error)
 	Close() error
 }
 
@@ -37,6 +37,7 @@ func NewEdge(mysql PlanetScaleEdgeMysqlAccess, logger Logger) PlanetScaleDatabas
 // It uses the mysql interface provided by PlanetScale for all schema/shard/tablet discovery and
 // the grpc API for incrementally syncing rows from PlanetScale.
 type PlanetScaleEdgeDatabase struct {
+	rowIndex int64
 	Logger   Logger
 	Mysql    PlanetScaleEdgeMysqlAccess
 	clientFn func(ctx context.Context, ps PlanetScaleSource) (psdbconnect.ConnectClient, error)
@@ -56,7 +57,7 @@ func (p PlanetScaleEdgeDatabase) Close() error {
 // 3. Ask vstream to stream from the last known vgtid
 // 4. When we reach the stopping point, read all rows available at this vgtid
 // 5. End the stream when (a) a vgtid newer than latest vgtid is encountered or (b) the timeout kicks in.
-func (p PlanetScaleEdgeDatabase) Read(ctx context.Context, ps PlanetScaleSource, table Stream, lastKnownPosition *psdbconnect.TableCursor) (*SerializedCursor, error) {
+func (p PlanetScaleEdgeDatabase) Read(ctx context.Context, ps PlanetScaleSource, table Stream, lastKnownPosition *psdbconnect.TableCursor, indexRows bool) (*SerializedCursor, error) {
 	var (
 		err                     error
 		sErr                    error
@@ -66,8 +67,9 @@ func (p PlanetScaleEdgeDatabase) Read(ctx context.Context, ps PlanetScaleSource,
 	tabletType := psdbconnect.TabletType_primary
 	currentPosition := lastKnownPosition
 
-	readDuration := 1 * time.Minute
+	readDuration := 90 * time.Second
 	preamble := fmt.Sprintf("[%v shard : %v] ", table.Name, currentPosition.Shard)
+	p.rowIndex = 0
 	for {
 		p.Logger.Info(preamble + "peeking to see if there's any new rows")
 		latestCursorPosition, lcErr := p.getLatestCursorPosition(ctx, currentPosition.Shard, currentPosition.Keyspace, table, ps, tabletType)
@@ -83,7 +85,7 @@ func (p PlanetScaleEdgeDatabase) Read(ctx context.Context, ps PlanetScaleSource,
 		p.Logger.Info(fmt.Sprintf("new rows found, syncing rows for %v", readDuration))
 		p.Logger.Info(fmt.Sprintf(preamble+"syncing rows with cursor [%v]", currentPosition))
 
-		currentPosition, err = p.sync(ctx, currentPosition, latestCursorPosition, table, ps, tabletType, readDuration)
+		currentPosition, err = p.sync(ctx, currentPosition, latestCursorPosition, table, ps, tabletType, readDuration, indexRows)
 		if currentPosition.Position != "" {
 			currentSerializedCursor, sErr = TableCursorToSerializedCursor(currentPosition)
 			if sErr != nil {
@@ -111,7 +113,7 @@ func (p PlanetScaleEdgeDatabase) Read(ctx context.Context, ps PlanetScaleSource,
 	}
 }
 
-func (p PlanetScaleEdgeDatabase) sync(ctx context.Context, tc *psdbconnect.TableCursor, stopPosition string, s Stream, ps PlanetScaleSource, tabletType psdbconnect.TabletType, readDuration time.Duration) (*psdbconnect.TableCursor, error) {
+func (p PlanetScaleEdgeDatabase) sync(ctx context.Context, tc *psdbconnect.TableCursor, stopPosition string, s Stream, ps PlanetScaleSource, tabletType psdbconnect.TabletType, readDuration time.Duration, indexRows bool) (*psdbconnect.TableCursor, error) {
 	defer p.Logger.Flush(s)
 	ctx, cancel := context.WithTimeout(ctx, readDuration)
 	defer cancel()
@@ -187,8 +189,9 @@ func (p PlanetScaleEdgeDatabase) sync(ctx context.Context, tc *psdbconnect.Table
 					Fields: result.Fields,
 				}
 				sqlResult.Rows = append(sqlResult.Rows, row)
+				p.rowIndex += 1
 				// print Singer messages to stdout here.
-				p.printQueryResult(sqlResult, s)
+				p.printQueryResult(sqlResult, s, indexRows)
 			}
 		}
 
@@ -258,7 +261,7 @@ func (p PlanetScaleEdgeDatabase) getLatestCursorPosition(ctx context.Context, sh
 
 // printQueryResult will pretty-print a Singer Record to the logger.
 // Copied from vtctl/query.go
-func (p PlanetScaleEdgeDatabase) printQueryResult(qr *sqltypes.Result, s Stream) {
+func (p PlanetScaleEdgeDatabase) printQueryResult(qr *sqltypes.Result, s Stream, indexRows bool) {
 	data := QueryResultToRecords(qr)
 	for _, datum := range data {
 		subset := map[string]interface{}{}
@@ -271,6 +274,10 @@ func (p PlanetScaleEdgeDatabase) printQueryResult(qr *sqltypes.Result, s Stream)
 					subset[selectedProperty] = datum[selectedProperty].(sqltypes.Value).ToString()
 				}
 			}
+		}
+
+		if indexRows {
+			subset["index"] = p.rowIndex
 		}
 		record := NewRecord()
 		record.Stream = s.Name

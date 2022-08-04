@@ -394,6 +394,10 @@ type State struct {
 	Streams map[string]ShardStates `json:"bookmarks"`
 }
 
+type WrappedState struct {
+	Value State `json:"value"`
+}
+
 type ShardStates struct {
 	Shards map[string]*SerializedCursor `json:"shards"`
 }
