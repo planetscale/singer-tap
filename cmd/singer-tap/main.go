@@ -2,10 +2,8 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strings"
 
@@ -53,7 +51,6 @@ func execute(discoverMode bool, logger internal.Logger, configFilePath, catalogF
 		sourceConfig internal.PlanetScaleSource
 		catalog      internal.Catalog
 		state        *internal.State
-		wrappedState *internal.WrappedState
 		err          error
 	)
 
@@ -61,7 +58,7 @@ func execute(discoverMode bool, logger internal.Logger, configFilePath, catalogF
 		return errors.New("Please specify path to a valid configuration file with the --config flag")
 	}
 
-	sourceConfig, err = parse(configFilePath, sourceConfig)
+	sourceConfig, err = internal.Parse(configFilePath, sourceConfig)
 	if err != nil {
 		return fmt.Errorf("config file contents are invalid: %q", err)
 	}
@@ -84,24 +81,15 @@ func execute(discoverMode bool, logger internal.Logger, configFilePath, catalogF
 		return errors.New("Please specify path to a valid catalog file with the --catalog flag")
 	}
 
-	catalog, err = parse(catalogFilePath, catalog)
+	catalog, err = internal.Parse(catalogFilePath, catalog)
 	if err != nil {
 		return fmt.Errorf("catalog file contents are invalid: %q", err)
 	}
 
 	if len(stateFilePath) > 0 {
-		state, err = parse(stateFilePath, state)
+		state, err = internal.ParseSavedState(stateFilePath)
 		if err != nil {
 			return fmt.Errorf("state file contents are invalid: %q", err)
-		}
-		if state == nil || len(state.Streams) == 0 {
-			wrappedState, err = parse(stateFilePath, wrappedState)
-			if err != nil {
-				return fmt.Errorf("state file contents are invalid: %q", err)
-			}
-			if wrappedState != nil {
-				state = &wrappedState.Value
-			}
 		}
 	}
 
@@ -134,16 +122,4 @@ func discover(ctx context.Context, logger internal.Logger, source internal.Plane
 	}
 
 	return logger.Schema(catalog)
-}
-
-func parse[T any](path string, obj T) (T, error) {
-	b, err := ioutil.ReadFile(path)
-	if err != nil {
-		return obj, errors.Wrapf(err, "unable to read file at path %v", path)
-	}
-
-	if err = json.Unmarshal(b, &obj); err != nil {
-		return obj, err
-	}
-	return obj, nil
 }

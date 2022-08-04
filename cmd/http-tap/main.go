@@ -51,6 +51,7 @@ func execute(logger internal.Logger, apiUrl string, batchSize int, token string)
 		stream *internal.Stream
 	)
 
+	recordCount := 0
 	batchWriter := internal.NewBatchWriter(batchSize, logger, apiUrl, apiToken)
 
 	for scanner.Scan() {
@@ -65,13 +66,18 @@ func execute(logger internal.Logger, apiUrl string, batchSize int, token string)
 				if err := batchWriter.Flush(stream); err != nil {
 					return err
 				}
+				if recordCount > 0 {
+					logger.Info(fmt.Sprintf("Published [%v] records for stream %q", recordCount, stream.Name))
+				}
 			}
 
 			// we retain the catalog so we can build a BatchMessage
 			stream = s
+			recordCount = 0
 		}
 
 		if r != nil {
+			recordCount += 1
 			if err := batchWriter.Send(r, stream); err != nil {
 				return err
 			}
@@ -82,6 +88,9 @@ func execute(logger internal.Logger, apiUrl string, batchSize int, token string)
 		return scanner.Err()
 	}
 
+	if recordCount > 0 {
+		logger.Info(fmt.Sprintf("Published [%v] records for stream %q", recordCount, stream.Name))
+	}
 	return batchWriter.Flush(stream)
 }
 

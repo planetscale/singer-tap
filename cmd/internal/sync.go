@@ -28,7 +28,7 @@ func Sync(ctx context.Context, mysqlDatabase PlanetScaleEdgeMysqlAccess, edgeDat
 	}
 
 	// if there is no last known state, start from the beginning.
-	if state == nil {
+	if state == nil || len(state.Streams) == 0 {
 		state = beginningState
 	}
 

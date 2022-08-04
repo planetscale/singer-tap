@@ -2,6 +2,10 @@ package internal
 
 import (
 	"encoding/base64"
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
+
 	"github.com/pkg/errors"
 	psdbconnect "github.com/planetscale/airbyte-source/proto/psdbconnect/v1alpha1"
 	"github.com/planetscale/psdb/core/codec"
@@ -404,6 +408,43 @@ type ShardStates struct {
 
 type SerializedCursor struct {
 	Cursor string `json:"cursor"`
+}
+
+func ParseSavedState(stateFilePath string) (*State, error) {
+	var (
+		state        *State
+		wrappedState *WrappedState
+		err          error
+	)
+
+	state, err = Parse(stateFilePath, state)
+	if err != nil {
+		return nil, fmt.Errorf("state file contents are invalid: %q", err)
+	}
+
+	if state == nil || len(state.Streams) == 0 {
+		wrappedState, err = Parse(stateFilePath, wrappedState)
+		if err != nil {
+			return nil, fmt.Errorf("state file contents are invalid: %q", err)
+		}
+		if wrappedState != nil {
+			state = &wrappedState.Value
+		}
+	}
+
+	return state, nil
+}
+
+func Parse[T any](path string, obj T) (T, error) {
+	b, err := ioutil.ReadFile(path)
+	if err != nil {
+		return obj, errors.Wrapf(err, "unable to read file at path %v", path)
+	}
+
+	if err = json.Unmarshal(b, &obj); err != nil {
+		return obj, err
+	}
+	return obj, nil
 }
 
 func (s SerializedCursor) SerializedCursorToTableCursor() (*psdbconnect.TableCursor, error) {
