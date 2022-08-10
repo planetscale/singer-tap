@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"time"
+	querypb "vitess.io/vitess/go/vt/proto/query"
 
 	"github.com/pkg/errors"
 	psdbconnect "github.com/planetscale/airbyte-source/proto/psdbconnect/v1alpha1"
@@ -145,6 +146,7 @@ func (p PlanetScaleEdgeDatabase) sync(ctx context.Context, tc *psdbconnect.Table
 	}
 
 	if tc.LastKnownPk != nil {
+		filterFields(tc.LastKnownPk, s)
 		tc.Position = ""
 	}
 
@@ -199,6 +201,32 @@ func (p PlanetScaleEdgeDatabase) sync(ctx context.Context, tc *psdbconnect.Table
 			return tc, io.EOF
 		}
 	}
+}
+
+// filterFields removes all fields that are not part of the primary key of a given stream
+// the `Fields` collection in the LastKnownPK QueryResult might contain _ALL_ the
+// fields in the table and not just the fields that have values assigned to them.
+// Because the field -> value mapping is ordinal based in Vitess,
+// we can depend on the original Fields collection preserving the order.
+func filterFields(lastKnownPK *querypb.QueryResult, s Stream) {
+	var fields []*querypb.Field
+	for _, field := range lastKnownPK.Fields {
+		if contains(s.KeyProperties, field.Name) {
+			fields = append(fields, field)
+		}
+	}
+	lastKnownPK.Fields = fields
+}
+
+// contains checks if a string searchTerm is present in the list.
+func contains(list []string, searchTerm string) bool {
+	for _, val := range list {
+		if searchTerm == val {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (p PlanetScaleEdgeDatabase) getLatestCursorPosition(ctx context.Context, shard, keyspace string, s Stream, ps PlanetScaleSource, tabletType psdbconnect.TabletType) (string, error) {
