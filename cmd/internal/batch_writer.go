@@ -9,8 +9,8 @@ import (
 	"time"
 )
 
-const MaxObjectsInBatch int = 19000
-const MaxBatchRequestSize int = 20 * 1024 * 1024
+const MaxObjectsInBatch int = 1000
+const MaxBatchRequestSize int = 2 * 1024 * 1024
 
 type BatchWriter interface {
 	Flush(stream *Stream) error
