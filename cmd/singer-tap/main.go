@@ -48,7 +48,6 @@ func main() {
 }
 
 func execute(discoverMode bool, logger internal.Logger, configFilePath, catalogFilePath, stateFilePath string) error {
-
 	var (
 		sourceConfig internal.PlanetScaleSource
 		catalog      internal.Catalog

@@ -3,9 +3,10 @@ package internal
 import (
 	"context"
 	"database/sql"
+	"io"
+
 	psdbconnect "github.com/planetscale/airbyte-source/proto/psdbconnect/v1alpha1"
 	"google.golang.org/grpc"
-	"io"
 )
 
 type testSingerLogger struct {
@@ -38,18 +39,18 @@ func (tpe *testPlanetScaleEdgeDatabase) CanConnect(ctx context.Context, ps Plane
 	return tpe.CanConnectFn(ctx, ps)
 }
 
-func (tpe *testPlanetScaleEdgeDatabase) Read(ctx context.Context, ps PlanetScaleSource, s Stream, tc *psdbconnect.TableCursor, indexRows bool) (*SerializedCursor, error) {
+func (tpe *testPlanetScaleEdgeDatabase) Read(ctx context.Context, ps PlanetScaleSource, s Stream, tc *psdbconnect.TableCursor, indexRows bool, columns []string) (*SerializedCursor, error) {
 	tpe.ReadFnInvoked = true
 	return tpe.ReadFn(ctx, ps, s, tc, indexRows)
 }
 
 func (tpe *testPlanetScaleEdgeDatabase) Close() error {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }
 
 func (tal *testSingerLogger) Error(message string) {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }
 
@@ -59,7 +60,7 @@ func (tal *testSingerLogger) State(state State) error {
 }
 
 func (tal *testSingerLogger) Schema(catalog Catalog) error {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }
 
@@ -85,7 +86,6 @@ func (tal *testSingerLogger) Record(record Record, stream Stream) error {
 }
 
 func (tal *testSingerLogger) Flush(stream Stream) {
-
 }
 
 type clientConnectionMock struct {
@@ -107,6 +107,7 @@ func (x *connectSyncClientMock) Recv() (*psdbconnect.SyncResponse, error) {
 	x.lastResponseSent += 1
 	return x.syncResponses[x.lastResponseSent-1], nil
 }
+
 func (c *clientConnectionMock) Sync(ctx context.Context, in *psdbconnect.SyncRequest, opts ...grpc.CallOption) (psdbconnect.Connect_SyncClient, error) {
 	c.syncFnInvoked = true
 	c.syncFnInvokedCount += 1
@@ -149,7 +150,7 @@ func (tma *mysqlAccessMock) GetTablePrimaryKeys(ctx context.Context, source Plan
 }
 
 func (mysqlAccessMock) QueryContext(ctx context.Context, psc PlanetScaleSource, query string, args ...interface{}) (*sql.Rows, error) {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }
 

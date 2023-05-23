@@ -50,7 +50,7 @@ func TestRead_CanPeekBeforeRead(t *testing.T) {
 	cs := Stream{
 		Name: "stream",
 	}
-	sc, err := ped.Read(context.Background(), ps, cs, tc, false)
+	sc, err := ped.Read(context.Background(), ps, cs, tc, false, nil)
 	assert.NoError(t, err)
 	esc, err := TableCursorToSerializedCursor(tc)
 	assert.NoError(t, err)
@@ -91,7 +91,7 @@ func TestRead_CanEarlyExitIfNoNewVGtidInPeek(t *testing.T) {
 	cs := Stream{
 		Name: "stream",
 	}
-	sc, err := ped.Read(context.Background(), ps, cs, tc, false)
+	sc, err := ped.Read(context.Background(), ps, cs, tc, false, nil)
 	assert.NoError(t, err)
 	esc, err := TableCursorToSerializedCursor(tc)
 	assert.NoError(t, err)
@@ -133,7 +133,7 @@ func TestRead_CanPickPrimaryForShardedKeyspaces(t *testing.T) {
 	cs := Stream{
 		Name: "stream",
 	}
-	sc, err := ped.Read(context.Background(), ps, cs, tc, false)
+	sc, err := ped.Read(context.Background(), ps, cs, tc, false, nil)
 	assert.NoError(t, err)
 	esc, err := TableCursorToSerializedCursor(tc)
 	assert.NoError(t, err)
@@ -144,7 +144,7 @@ func TestRead_CanPickPrimaryForShardedKeyspaces(t *testing.T) {
 }
 
 func TestDiscover_CanPickRightSingerType(t *testing.T) {
-	var tests = []struct {
+	tests := []struct {
 		MysqlType      string
 		JSONSchemaType string
 		SingerType     string
@@ -197,7 +197,6 @@ func TestDiscover_CanPickRightSingerType(t *testing.T) {
 	}
 
 	for _, typeTest := range tests {
-
 		t.Run(fmt.Sprintf("mysql_type_%v", typeTest.MysqlType), func(t *testing.T) {
 			p := getJsonSchemaType(typeTest.MysqlType)
 			assert.Equal(t, typeTest.SingerType, p.CustomFormat, "wrong custom format")
@@ -205,6 +204,7 @@ func TestDiscover_CanPickRightSingerType(t *testing.T) {
 		})
 	}
 }
+
 func TestRead_CanPickPrimaryForUnshardedKeyspaces(t *testing.T) {
 	tma := getTestMysqlAccess()
 	b := bytes.NewBufferString("")
@@ -241,7 +241,7 @@ func TestRead_CanPickPrimaryForUnshardedKeyspaces(t *testing.T) {
 	cs := Stream{
 		Name: "stream",
 	}
-	sc, err := ped.Read(context.Background(), ps, cs, tc, false)
+	sc, err := ped.Read(context.Background(), ps, cs, tc, false, nil)
 	assert.NoError(t, err)
 	esc, err := TableCursorToSerializedCursor(tc)
 	assert.NoError(t, err)
@@ -285,7 +285,7 @@ func TestRead_CanReturnOriginalCursorIfNoNewFound(t *testing.T) {
 	cs := Stream{
 		Name: "stream",
 	}
-	sc, err := ped.Read(context.Background(), ps, cs, tc, false)
+	sc, err := ped.Read(context.Background(), ps, cs, tc, false, nil)
 	assert.NoError(t, err)
 	esc, err := TableCursorToSerializedCursor(tc)
 	assert.NoError(t, err)
@@ -333,7 +333,7 @@ func TestRead_CanReturnNewCursorIfNewFound(t *testing.T) {
 	cs := Stream{
 		Name: "stream",
 	}
-	sc, err := ped.Read(context.Background(), ps, cs, tc, false)
+	sc, err := ped.Read(context.Background(), ps, cs, tc, false, nil)
 	assert.NoError(t, err)
 	esc, err := TableCursorToSerializedCursor(newTC)
 	assert.NoError(t, err)
@@ -414,7 +414,7 @@ func TestRead_CanStopAtWellKnownCursor(t *testing.T) {
 		Name: "customers",
 	}
 
-	sc, err := ped.Read(context.Background(), ps, cs, responses[0].Cursor, false)
+	sc, err := ped.Read(context.Background(), ps, cs, responses[0].Cursor, false, nil)
 	assert.NoError(t, err)
 	// sync should start at the first vgtid
 	esc, err := TableCursorToSerializedCursor(responses[nextVGtidPosition].Cursor)
@@ -517,7 +517,7 @@ func TestRead_CanLogResults(t *testing.T) {
 			},
 		},
 	}
-	sc, err := ped.Read(context.Background(), ps, cs, tc, false)
+	sc, err := ped.Read(context.Background(), ps, cs, tc, false, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, sc)
 	assert.Equal(t, 2, len(tal.records["products"]))

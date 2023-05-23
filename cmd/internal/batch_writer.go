@@ -4,13 +4,16 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/hashicorp/go-retryablehttp"
 	"io/ioutil"
 	"time"
+
+	"github.com/hashicorp/go-retryablehttp"
 )
 
-const MaxObjectsInBatch int = 1000
-const MaxBatchRequestSize int = 2 * 1024 * 1024
+const (
+	MaxObjectsInBatch   int = 1000
+	MaxBatchRequestSize int = 2 * 1024 * 1024
+)
 
 type BatchWriter interface {
 	Flush(stream *Stream) error
