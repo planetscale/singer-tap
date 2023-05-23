@@ -10,7 +10,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func Sync(ctx context.Context, mysqlDatabase PlanetScaleEdgeMysqlAccess, edgeDatabase PlanetScaleDatabase, logger Logger, source PlanetScaleSource, catalog Catalog, state *State, indexRows bool) error {
+func Sync(ctx context.Context, mysqlDatabase PlanetScaleEdgeMysqlAccess, edgeDatabase PlanetScaleDatabase, logger Logger, source PlanetScaleSource, catalog Catalog, state *State, indexRows bool, recordWriter RecordWriter) error {
 	// The schema as its stored by Stitch needs to be filtered before it can be synced by the tap.
 	filteredSchema, err := filterSchema(catalog)
 	if err != nil {
@@ -74,7 +74,7 @@ func Sync(ctx context.Context, mysqlDatabase PlanetScaleEdgeMysqlAccess, edgeDat
 			}
 
 			onResult := func(sqlResult *sqltypes.Result) error {
-				return printQueryResult(sqlResult, stream, logger)
+				return printQueryResult(sqlResult, stream, recordWriter)
 			}
 
 			onCursor := func(cursor *psdbconnect.TableCursor) error {
@@ -106,7 +106,7 @@ func Sync(ctx context.Context, mysqlDatabase PlanetScaleEdgeMysqlAccess, edgeDat
 	return logger.State(*state)
 }
 
-func printQueryResult(qr *sqltypes.Result, s Stream, logger Logger) error {
+func printQueryResult(qr *sqltypes.Result, s Stream, recordWriter RecordWriter) error {
 	data := QueryResultToRecords(qr)
 	for _, datum := range data {
 		subset := map[string]interface{}{}
@@ -124,7 +124,7 @@ func printQueryResult(qr *sqltypes.Result, s Stream, logger Logger) error {
 		record := NewRecord()
 		record.Stream = s.Name
 		record.Data = subset
-		if err := logger.Record(record, s); err != nil {
+		if err := recordWriter.Record(record, s); err != nil {
 			return err
 		}
 	}

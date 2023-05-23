@@ -15,12 +15,7 @@ const (
 	MaxBatchRequestSize int = 2 * 1024 * 1024
 )
 
-type BatchWriter interface {
-	Flush(stream *Stream) error
-	Send(record *Record, stream *Stream) error
-}
-
-func NewBatchWriter(batchSize int, logger Logger, apiURL, apiToken string) BatchWriter {
+func NewHttpRecordWriter(batchSize int, apiURL, apiToken string) RecordWriter {
 	client := retryablehttp.NewClient()
 	// Wait 3 seconds before retrying
 	client.RetryWaitMin = 3 * time.Second
@@ -29,7 +24,6 @@ func NewBatchWriter(batchSize int, logger Logger, apiURL, apiToken string) Batch
 		batchSize: batchSize,
 		apiURL:    apiURL,
 		apiToken:  apiToken,
-		logger:    logger,
 		client:    client,
 		messages:  make([]ImportMessage, 0, batchSize),
 	}
@@ -49,13 +43,13 @@ type BatchResponse struct {
 	Message string `json:"message"`
 }
 
-func (h *httpBatchWriter) Flush(stream *Stream) error {
+func (h *httpBatchWriter) Flush(stream Stream) error {
 	if len(h.messages) == 0 {
 		return nil
 	}
 
 	batches := getBatchMessages(h.messages, stream, MaxObjectsInBatch, MaxBatchRequestSize)
-	h.logger.Info(fmt.Sprintf("flushing [%v] messages for stream %q in [%v] batches", len(h.messages), stream.Name, len(batches)))
+	fmt.Printf("flushing [%v] messages for stream %q in [%v] batches", len(h.messages), stream.Name, len(batches))
 	for _, batch := range batches {
 
 		b, err := json.Marshal(batch)
@@ -98,7 +92,7 @@ func (h *httpBatchWriter) Flush(stream *Stream) error {
 	return nil
 }
 
-func (h *httpBatchWriter) Send(record *Record, stream *Stream) error {
+func (h *httpBatchWriter) Record(record Record, stream Stream) error {
 	h.messages = append(h.messages, createImportMessage(record))
 	if len(h.messages) >= h.batchSize {
 		return h.Flush(stream)
@@ -112,7 +106,7 @@ func (h *httpBatchWriter) Send(record *Record, stream *Stream) error {
 // The rules are:
 // 1. There cannot be more than 20,000 records in the request.
 // 2. The size of the serialized JSON cannot be more than 20 MB.
-func getBatchMessages(messages []ImportMessage, stream *Stream, maxObjectsInBatch int, maxBatchSerializedSize int) []ImportBatch {
+func getBatchMessages(messages []ImportMessage, stream Stream, maxObjectsInBatch int, maxBatchSerializedSize int) []ImportBatch {
 	var batches []ImportBatch
 	allocated := 0
 	unallocated := len(messages)
@@ -147,7 +141,7 @@ func (imb *ImportBatch) SizeOf() int {
 	return len(b)
 }
 
-func createImportMessage(record *Record) ImportMessage {
+func createImportMessage(record Record) ImportMessage {
 	now := time.Now()
 	return ImportMessage{
 		Action:    "upsert",

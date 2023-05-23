@@ -85,7 +85,8 @@ func (tal *testSingerLogger) Record(record Record, stream Stream) error {
 	return nil
 }
 
-func (tal *testSingerLogger) Flush(stream Stream) {
+func (tal *testSingerLogger) Flush(stream Stream) error {
+	return nil
 }
 
 type clientConnectionMock struct {

@@ -9,6 +9,11 @@ import (
 	"vitess.io/vitess/go/sqltypes"
 )
 
+type RecordWriter interface {
+	Flush(stream Stream) error
+	Record(record Record, stream Stream) error
+}
+
 func TableCursorToSerializedCursor(cursor *psdbconnect.TableCursor) (*SerializedCursor, error) {
 	d, err := codec.DefaultCodec.Marshal(cursor)
 	if err != nil {

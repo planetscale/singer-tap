@@ -20,7 +20,7 @@ func TestCanSplitIntoBatches(t *testing.T) {
 
 	stream := &Stream{}
 
-	batches := getBatchMessages(messages, stream, 1, 100*1024*1024)
+	batches := getBatchMessages(messages, *stream, 1, 100*1024*1024)
 	assert.Equal(t, len(messages), len(batches))
 	totalMessages := 0
 	for _, batch := range batches {

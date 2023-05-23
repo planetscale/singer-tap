@@ -52,22 +52,27 @@ func init() {
 
 func main() {
 	flag.Parse()
+	var recordWriter internal.RecordWriter
+	logger := internal.NewLogger("PlanetScale Tap", os.Stdout, os.Stderr)
 	if commitMode {
 		if len(apiToken) == 0 {
 			fmt.Println("Commit mode requires an apiToken, please provide a valid apiToken with the --api-token flag")
 			os.Exit(1)
 		}
+
+		recordWriter = internal.NewHttpRecordWriter(batchSize, singerAPIURL, apiToken)
+	} else {
+		recordWriter = logger
 	}
-	logger := internal.NewLogger("PlanetScale Tap", os.Stdout, os.Stderr)
 	logger.Info(fmt.Sprintf("PlanetScale Singer Tap : version [%q], commit [%q], published on [%q]", version, commit, date))
-	err := execute(discoverMode, logger, configFilePath, catalogFilePath, stateFilePath)
+	err := execute(discoverMode, logger, configFilePath, catalogFilePath, stateFilePath, recordWriter)
 	if err != nil {
 		logger.Error(err.Error())
 		os.Exit(1)
 	}
 }
 
-func execute(discoverMode bool, logger internal.Logger, configFilePath, catalogFilePath, stateFilePath string) error {
+func execute(discoverMode bool, logger internal.Logger, configFilePath, catalogFilePath, stateFilePath string, recordWriter internal.RecordWriter) error {
 	var (
 		sourceConfig internal.PlanetScaleSource
 		catalog      internal.Catalog
@@ -114,10 +119,10 @@ func execute(discoverMode bool, logger internal.Logger, configFilePath, catalogF
 		}
 	}
 
-	return sync(context.Background(), logger, sourceConfig, catalog, state)
+	return sync(context.Background(), logger, sourceConfig, catalog, state, recordWriter)
 }
 
-func sync(ctx context.Context, logger internal.Logger, source internal.PlanetScaleSource, catalog internal.Catalog, state *internal.State) error {
+func sync(ctx context.Context, logger internal.Logger, source internal.PlanetScaleSource, catalog internal.Catalog, state *internal.State, recordWriter internal.RecordWriter) error {
 	logger.Info(fmt.Sprintf("Syncing records for PlanetScale database : %v", source.Database))
 	mysql, err := internal.NewMySQL(&source)
 	if err != nil {
@@ -126,7 +131,7 @@ func sync(ctx context.Context, logger internal.Logger, source internal.PlanetSca
 	defer mysql.Close()
 	ped := internal.NewEdge(mysql, logger)
 
-	return internal.Sync(ctx, mysql, ped, logger, source, catalog, state, indexRows)
+	return internal.Sync(ctx, mysql, ped, logger, source, catalog, state, indexRows, recordWriter)
 }
 
 func discover(ctx context.Context, logger internal.Logger, source internal.PlanetScaleSource, settings internal.DiscoverSettings) error {
