@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"time"
+
 	querypb "vitess.io/vitess/go/vt/proto/query"
 
 	"github.com/pkg/errors"
@@ -23,7 +24,7 @@ import (
 // that defines all the data access methods needed for the PlanetScale Singer Tap to function.
 type PlanetScaleDatabase interface {
 	CanConnect(ctx context.Context, ps PlanetScaleSource) error
-	Read(ctx context.Context, ps PlanetScaleSource, s Stream, tc *psdbconnect.TableCursor, indexRows bool) (*SerializedCursor, error)
+	Read(ctx context.Context, ps PlanetScaleSource, s Stream, tc *psdbconnect.TableCursor, indexRows bool, columns []string) (*SerializedCursor, error)
 	Close() error
 }
 
@@ -58,7 +59,7 @@ func (p PlanetScaleEdgeDatabase) Close() error {
 // 3. Ask vstream to stream from the last known vgtid
 // 4. When we reach the stopping point, read all rows available at this vgtid
 // 5. End the stream when (a) a vgtid newer than latest vgtid is encountered or (b) the timeout kicks in.
-func (p PlanetScaleEdgeDatabase) Read(ctx context.Context, ps PlanetScaleSource, table Stream, lastKnownPosition *psdbconnect.TableCursor, indexRows bool) (*SerializedCursor, error) {
+func (p PlanetScaleEdgeDatabase) Read(ctx context.Context, ps PlanetScaleSource, table Stream, lastKnownPosition *psdbconnect.TableCursor, indexRows bool, columns []string) (*SerializedCursor, error) {
 	var (
 		err                     error
 		sErr                    error
@@ -86,7 +87,7 @@ func (p PlanetScaleEdgeDatabase) Read(ctx context.Context, ps PlanetScaleSource,
 		p.Logger.Info(fmt.Sprintf(preamble+"syncing rows with cursor [%v]", currentPosition))
 		p.Logger.Info(fmt.Sprintf(preamble+"latest database position is [%v]", latestCursorPosition))
 
-		currentPosition, err = p.sync(ctx, currentPosition, latestCursorPosition, table, ps, tabletType, readDuration, indexRows)
+		currentPosition, err = p.sync(ctx, currentPosition, latestCursorPosition, table, columns, ps, tabletType, readDuration, indexRows)
 		if currentPosition.Position != "" {
 			currentSerializedCursor, sErr = TableCursorToSerializedCursor(currentPosition)
 			if sErr != nil {
@@ -114,7 +115,7 @@ func (p PlanetScaleEdgeDatabase) Read(ctx context.Context, ps PlanetScaleSource,
 	}
 }
 
-func (p PlanetScaleEdgeDatabase) sync(ctx context.Context, tc *psdbconnect.TableCursor, stopPosition string, s Stream, ps PlanetScaleSource, tabletType psdbconnect.TabletType, readDuration time.Duration, indexRows bool) (*psdbconnect.TableCursor, error) {
+func (p PlanetScaleEdgeDatabase) sync(ctx context.Context, tc *psdbconnect.TableCursor, stopPosition string, s Stream, columns []string, ps PlanetScaleSource, tabletType psdbconnect.TabletType, readDuration time.Duration, indexRows bool) (*psdbconnect.TableCursor, error) {
 	defer p.Logger.Flush(s)
 	ctx, cancel := context.WithTimeout(ctx, readDuration)
 	defer cancel()
@@ -154,6 +155,7 @@ func (p PlanetScaleEdgeDatabase) sync(ctx context.Context, tc *psdbconnect.Table
 		TableName:  s.Name,
 		Cursor:     tc,
 		TabletType: tabletType,
+		Columns:    columns,
 	}
 
 	c, err := client.Sync(ctx, sReq)
@@ -291,7 +293,7 @@ func (p PlanetScaleEdgeDatabase) printQueryResult(qr *sqltypes.Result, s Stream,
 	data := QueryResultToRecords(qr)
 	for _, datum := range data {
 		subset := map[string]interface{}{}
-		for selectedProperty := range s.Schema.Properties {
+		for _, selectedProperty := range s.Metadata.GetSelectedProperties() {
 			subset[selectedProperty] = datum[selectedProperty]
 			if len(s.Schema.Properties[selectedProperty].CustomFormat) > 0 {
 				if s.Schema.Properties[selectedProperty].CustomFormat == "date-time" {
