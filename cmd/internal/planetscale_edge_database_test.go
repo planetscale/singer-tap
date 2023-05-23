@@ -500,7 +500,7 @@ func TestRead_CanLogResults(t *testing.T) {
 			Metadata{
 				Metadata: NodeMetadata{
 					Selected:   true,
-					BreadCrumb: []string{"properties", "id"},
+					BreadCrumb: []string{"properties", "pid"},
 				},
 			},
 			Metadata{
