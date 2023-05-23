@@ -39,7 +39,7 @@ func (tpe *testPlanetScaleEdgeDatabase) CanConnect(ctx context.Context, ps Plane
 	return tpe.CanConnectFn(ctx, ps)
 }
 
-func (tpe *testPlanetScaleEdgeDatabase) Read(ctx context.Context, ps PlanetScaleSource, s Stream, tc *psdbconnect.TableCursor, indexRows bool) (*SerializedCursor, error) {
+func (tpe *testPlanetScaleEdgeDatabase) Read(ctx context.Context, ps PlanetScaleSource, s Stream, tc *psdbconnect.TableCursor, indexRows bool, columns []string) (*SerializedCursor, error) {
 	tpe.ReadFnInvoked = true
 	return tpe.ReadFn(ctx, ps, s, tc, indexRows)
 }

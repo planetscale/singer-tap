@@ -204,6 +204,19 @@ func (m MetadataCollection) GetPropertyMap() map[string]Metadata {
 	return propertyMap
 }
 
+func (m MetadataCollection) GetSelectedProperties() []string {
+	var properties []string
+	for _, nm := range m {
+		if len(nm.Metadata.BreadCrumb) > 0 && nm.Metadata.Selected {
+			// example for a stream: "breadcrumb": []
+			// example for a property: "breadcrumb": ["properties", "id"]
+			propertyName := nm.Metadata.BreadCrumb[len(nm.Metadata.BreadCrumb)-1]
+			properties = append(properties, propertyName)
+		}
+	}
+	return properties
+}
+
 func (s *Stream) GenerateMetadata(keyProperties []string, autoSelect, useIncrementalSync bool) error {
 	streamMetadata := NewMetadata(autoSelect)
 	streamMetadata.Metadata.TableKeyProperties = keyProperties
