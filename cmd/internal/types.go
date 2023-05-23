@@ -2,6 +2,7 @@ package internal
 
 import (
 	"encoding/base64"
+
 	"github.com/pkg/errors"
 	psdbconnect "github.com/planetscale/airbyte-source/proto/psdbconnect/v1alpha1"
 	"github.com/planetscale/psdb/core/codec"
@@ -27,39 +28,40 @@ type Catalog struct {
 
 // Stream represents the JSONSchema definition for a given database object.
 // example:
-// {
-//  "streams": [
-//    {
-//      "tap_stream_id": "users",
-//      "stream": "users",
-//      "schema": {
-//        "type": ["null", "object"],
-//        "additionalProperties": false,
-//        "properties": {
-//          "id": {
-//            "type": [
-//              "null",
-//              "string"
-//            ],
-//          },
-//          "name": {
-//            "type": [
-//              "null",
-//              "string"
-//            ],
-//          },
-//          "date_modified": {
-//            "type": [
-//              "null",
-//              "string"
-//            ],
-//            "format": "date-time",
-//          }
-//        }
-//      }
-//    }
-//  ]
-//}
+//
+//	{
+//	 "streams": [
+//	   {
+//	     "tap_stream_id": "users",
+//	     "stream": "users",
+//	     "schema": {
+//	       "type": ["null", "object"],
+//	       "additionalProperties": false,
+//	       "properties": {
+//	         "id": {
+//	           "type": [
+//	             "null",
+//	             "string"
+//	           ],
+//	         },
+//	         "name": {
+//	           "type": [
+//	             "null",
+//	             "string"
+//	           ],
+//	         },
+//	         "date_modified": {
+//	           "type": [
+//	             "null",
+//	             "string"
+//	           ],
+//	           "format": "date-time",
+//	         }
+//	       }
+//	     }
+//	   }
+//	 ]
+//	}
 type Stream struct {
 	// Type is a constant of value "SCHEMA"
 	Type string `json:"type"`
@@ -112,10 +114,12 @@ type StreamProperty struct {
 	CustomFormat string   `json:"format,omitempty"`
 }
 
-type MetadataCollection []Metadata
-type Metadata struct {
-	Metadata NodeMetadata `json:"metadata"`
-}
+type (
+	MetadataCollection []Metadata
+	Metadata           struct {
+		Metadata NodeMetadata `json:"metadata"`
+	}
+)
 
 func (s *Stream) IncrementalSyncRequested() bool {
 	tm, err := s.GetTableMetadata()
@@ -141,49 +145,52 @@ func (s *Stream) GetTableMetadata() (*Metadata, error) {
 // GetPropertyMap takes a MetadataCollection which is a flat slice of metadata values
 // and turns it into a map of property name to metadata item
 // input:
-// {
-//        "metadata":
-//        {
-//            "inclusion": "available",
-//            "breadcrumb":
-//            [ "properties", "dept_no" ]
-//        }
-//    },
-//    {
-//        "metadata":
-//        {
-//            "inclusion": "available",
-//            "breadcrumb": [ "properties", "dept_name"]
-//        }
-//    }
-//]
+//
+//	{
+//	       "metadata":
+//	       {
+//	           "inclusion": "available",
+//	           "breadcrumb":
+//	           [ "properties", "dept_no" ]
+//	       }
+//	   },
+//	   {
+//	       "metadata":
+//	       {
+//	           "inclusion": "available",
+//	           "breadcrumb": [ "properties", "dept_name"]
+//	       }
+//	   }
+//
+// ]
 // output :
-// {
-//        "dept_no":
-//        {
-//            "metadata":
-//            {
-//                "inclusion": "available",
-//                "breadcrumb":
-//                [
-//                    "properties",
-//                    "dept_no"
-//                ]
-//            }
-//        },
-//        "dept_name":
-//        {
-//            "metadata":
-//            {
-//                "inclusion": "available",
-//                "breadcrumb":
-//                [
-//                    "properties",
-//                    "dept_name"
-//                ]
-//            }
-//        }
-//    }
+//
+//	{
+//	       "dept_no":
+//	       {
+//	           "metadata":
+//	           {
+//	               "inclusion": "available",
+//	               "breadcrumb":
+//	               [
+//	                   "properties",
+//	                   "dept_no"
+//	               ]
+//	           }
+//	       },
+//	       "dept_name":
+//	       {
+//	           "metadata":
+//	           {
+//	               "inclusion": "available",
+//	               "breadcrumb":
+//	               [
+//	                   "properties",
+//	                   "dept_name"
+//	               ]
+//	           }
+//	       }
+//	   }
 func (m MetadataCollection) GetPropertyMap() map[string]Metadata {
 	propertyMap := make(map[string]Metadata, len(m)-1)
 	for _, nm := range m {
@@ -226,6 +233,7 @@ func (s *Stream) GenerateMetadata(keyProperties []string, autoSelect, useIncreme
 	}
 	return nil
 }
+
 func NewMetadata(autoSelect bool) Metadata {
 	return Metadata{
 		Metadata: NodeMetadata{
@@ -238,36 +246,37 @@ func NewMetadata(autoSelect bool) Metadata {
 // NodeMetadata represents the metadata for a given database object
 // an example is :
 // "metadata": [
-//        {
-//          "metadata": {
-//            "inclusion": "available",
-//            "table-key-properties": ["id"],
-//            "selected": true,
-//            "valid-replication-keys": ["date_modified"],
-//            "schema-name": "users",
-//          },
-//          "breadcrumb": []
-//        },
-//        {
-//          "metadata": {
-//            "inclusion": "automatic"
-//          },
-//          "breadcrumb": ["properties", "id"]
-//        },
-//        {
-//          "metadata": {
-//            "inclusion": "available",
-//            "selected": true
-//          },
-//          "breadcrumb": ["properties", "name"]
-//        },
-//        {
-//          "metadata": {
-//            "inclusion": "automatic"
-//          },
-//          "breadcrumb": ["properties", "date_modified"]
-//        }
-//      ]
+//
+//	  {
+//	    "metadata": {
+//	      "inclusion": "available",
+//	      "table-key-properties": ["id"],
+//	      "selected": true,
+//	      "valid-replication-keys": ["date_modified"],
+//	      "schema-name": "users",
+//	    },
+//	    "breadcrumb": []
+//	  },
+//	  {
+//	    "metadata": {
+//	      "inclusion": "automatic"
+//	    },
+//	    "breadcrumb": ["properties", "id"]
+//	  },
+//	  {
+//	    "metadata": {
+//	      "inclusion": "available",
+//	      "selected": true
+//	    },
+//	    "breadcrumb": ["properties", "name"]
+//	  },
+//	  {
+//	    "metadata": {
+//	      "inclusion": "automatic"
+//	    },
+//	    "breadcrumb": ["properties", "date_modified"]
+//	  }
+//	]
 type NodeMetadata struct {
 	// Either true or false. Indicates that this node in the schema has been selected by the user for replication.
 	Selected bool `json:"selected"`
@@ -321,15 +330,16 @@ type NodeMetadata struct {
 
 // Record messages contain the data from the data stream.
 // example:
-// {
-//  "type": "RECORD",
-//  "stream": "users",
-//  "time_extracted": "2017-11-20T16:45:33.000Z",
-//  "record": {
-//    "id": 0,
-//    "name": "Chris"
-//  }
-//}
+//
+//	{
+//	 "type": "RECORD",
+//	 "stream": "users",
+//	 "time_extracted": "2017-11-20T16:45:33.000Z",
+//	 "record": {
+//	   "id": 0,
+//	   "name": "Chris"
+//	 }
+//	}
 type Record struct {
 	// a constant with value "Record"
 	Type string `json:"type"`
@@ -353,43 +363,44 @@ func NewRecord() Record {
 
 // State represents any previously known state about the last sync operation
 // example :
-// {
-//  "bookmarks":
-//  {
-//    "branch_query":
-//    {
-//      "shards":
-//      {
-//        "80-c0":
-//        {
-//          "cursor": "Base64-encoded-tablecursor"
-//        }
-//      }
-//    },
-//    "branch_query_tag":
-//    {
-//      "shards":
-//      {
-//        "-40":
-//        {
-//          "cursor": "Base64-encoded-tablecursor"
-//        },
-//        "c0-":
-//        {
-//          "cursor": "Base64-encoded-tablecursor"
-//        },
-//        "40-80":
-//        {
-//         "cursor": "Base64-encoded-tablecursor"
-//        },
-//        "80-c0":
-//        {
-//          "cursor": "Base64-encoded-tablecursor"
-//        }
-//      }
-//    }
-//  }
-//}
+//
+//	{
+//	 "bookmarks":
+//	 {
+//	   "branch_query":
+//	   {
+//	     "shards":
+//	     {
+//	       "80-c0":
+//	       {
+//	         "cursor": "Base64-encoded-tablecursor"
+//	       }
+//	     }
+//	   },
+//	   "branch_query_tag":
+//	   {
+//	     "shards":
+//	     {
+//	       "-40":
+//	       {
+//	         "cursor": "Base64-encoded-tablecursor"
+//	       },
+//	       "c0-":
+//	       {
+//	         "cursor": "Base64-encoded-tablecursor"
+//	       },
+//	       "40-80":
+//	       {
+//	        "cursor": "Base64-encoded-tablecursor"
+//	       },
+//	       "80-c0":
+//	       {
+//	         "cursor": "Base64-encoded-tablecursor"
+//	       }
+//	     }
+//	   }
+//	 }
+//	}
 type State struct {
 	Streams map[string]ShardStates `json:"bookmarks"`
 }
@@ -407,9 +418,7 @@ type SerializedCursor struct {
 }
 
 func (s SerializedCursor) SerializedCursorToTableCursor() (*psdbconnect.TableCursor, error) {
-	var (
-		tc psdbconnect.TableCursor
-	)
+	var tc psdbconnect.TableCursor
 	decoded, err := base64.StdEncoding.DecodeString(s.Cursor)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to decode table cursor")
@@ -450,7 +459,7 @@ type ImportBatch struct {
 	Table string `json:"table_name"`
 
 	// A Schema object containing the JSON schema describing the record(s) in the Message object’s data property.
-	//Records must conform to this schema or an error will be returned when the request is sent.
+	// Records must conform to this schema or an error will be returned when the request is sent.
 	Schema StreamSchema `json:"schema"`
 
 	// An array of Message objects, each representing a record to be upserted into the table.

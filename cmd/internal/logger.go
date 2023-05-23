@@ -62,6 +62,7 @@ func (sl *singerLogger) State(state State) error {
 		Value: state,
 	})
 }
+
 func (sl *singerLogger) StreamSchema(stream Stream) error {
 	stream.Type = "SCHEMA"
 	return sl.recordEncoder.Encode(stream)

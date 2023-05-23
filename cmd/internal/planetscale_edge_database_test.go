@@ -144,7 +144,7 @@ func TestRead_CanPickPrimaryForShardedKeyspaces(t *testing.T) {
 }
 
 func TestDiscover_CanPickRightSingerType(t *testing.T) {
-	var tests = []struct {
+	tests := []struct {
 		MysqlType      string
 		JSONSchemaType string
 		SingerType     string
@@ -197,7 +197,6 @@ func TestDiscover_CanPickRightSingerType(t *testing.T) {
 	}
 
 	for _, typeTest := range tests {
-
 		t.Run(fmt.Sprintf("mysql_type_%v", typeTest.MysqlType), func(t *testing.T) {
 			p := getJsonSchemaType(typeTest.MysqlType)
 			assert.Equal(t, typeTest.SingerType, p.CustomFormat, "wrong custom format")
@@ -205,6 +204,7 @@ func TestDiscover_CanPickRightSingerType(t *testing.T) {
 		})
 	}
 }
+
 func TestRead_CanPickPrimaryForUnshardedKeyspaces(t *testing.T) {
 	tma := getTestMysqlAccess()
 	b := bytes.NewBufferString("")

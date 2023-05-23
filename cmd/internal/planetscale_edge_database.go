@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"time"
+
 	querypb "vitess.io/vitess/go/vt/proto/query"
 
 	"github.com/pkg/errors"

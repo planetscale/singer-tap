@@ -2,9 +2,10 @@ package internal
 
 import (
 	"context"
+	"testing"
+
 	psdbconnect "github.com/planetscale/airbyte-source/proto/psdbconnect/v1alpha1"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestSync_CanFilterSchema(t *testing.T) {
