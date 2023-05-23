@@ -295,7 +295,7 @@ func (p PlanetScaleEdgeDatabase) printQueryResult(qr *sqltypes.Result, s Stream,
 	data := QueryResultToRecords(qr)
 	for _, datum := range data {
 		subset := map[string]interface{}{}
-		for selectedProperty := range s.Schema.Properties {
+		for _, selectedProperty := range s.Metadata.GetSelectedProperties() {
 			subset[selectedProperty] = datum[selectedProperty]
 			if len(s.Schema.Properties[selectedProperty].CustomFormat) > 0 {
 				if s.Schema.Properties[selectedProperty].CustomFormat == "date-time" {

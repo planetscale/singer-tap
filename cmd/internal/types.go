@@ -206,7 +206,7 @@ func (m MetadataCollection) GetPropertyMap() map[string]Metadata {
 }
 
 func (m MetadataCollection) GetSelectedProperties() []string {
-	properties := make([]string, len(m)-1)
+	var properties []string
 	for _, nm := range m {
 		if len(nm.Metadata.BreadCrumb) > 0 && nm.Metadata.Selected {
 			// example for a stream: "breadcrumb": []
