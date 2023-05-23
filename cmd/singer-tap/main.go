@@ -37,7 +37,7 @@ func init() {
 	flag.StringVar(&catalogFilePath, "catalog", "", "path to a catalog file for this tap")
 	flag.StringVar(&stateFilePath, "state", "", "path to state file for this configuration")
 	flag.BoolVar(&autoSelect, "auto-select", false, "(discover mode only) select all tables & columns in the schema")
-	flag.BoolVar(&useIncrementalSync, "incremental", false, "(discover mode only) all tables & views will be synced incrementally")
+	flag.BoolVar(&useIncrementalSync, "incremental", true, "(discover mode only) all tables & views will be synced incrementally")
 	flag.BoolVar(&indexRows, "index-rows", false, "index all rows in the output")
 	flag.StringVar(&excludedTables, "excluded-tables", "", "(discover mode only) comma separated list of tables & views to exclude.")
 
@@ -60,7 +60,7 @@ func main() {
 			os.Exit(1)
 		}
 
-		recordWriter = internal.NewHttpRecordWriter(batchSize, singerAPIURL, apiToken)
+		recordWriter = internal.NewHttpRecordWriter(batchSize, singerAPIURL, apiToken, stateDirectory, logger)
 	} else {
 		recordWriter = logger
 	}

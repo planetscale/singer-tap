@@ -63,12 +63,16 @@ func Sync(ctx context.Context, mysqlDatabase PlanetScaleEdgeMysqlAccess, edgeDat
 		}
 
 		for shard, cursor := range streamShardStates {
-			logger.Info(fmt.Sprintf("syncing rows from stream %q from shard %q", stream.Name, shard))
+			defer func() {
+				recordWriter.State(*state)
+			}()
+
+			logger.Info(fmt.Sprintf("known position is %v", cursor.Cursor))
 			tc, err := cursor.SerializedCursorToTableCursor()
 			if err != nil {
 				return err
 			}
-
+			logger.Info(fmt.Sprintf("syncing rows from stream %q from shard %q at position [%v]", stream.Name, shard, tc.Position))
 			if len(tc.Position) > 0 {
 				logger.Info(fmt.Sprintf("stream's known position is %q", tc.Position))
 			}
@@ -83,7 +87,8 @@ func Sync(ctx context.Context, mysqlDatabase PlanetScaleEdgeMysqlAccess, edgeDat
 					return err
 				}
 				state.Streams[stream.Name].Shards[shard] = sc
-				return logger.State(*state)
+				recordWriter.Flush(stream)
+				return nil
 			}
 
 			newCursor, err := edgeDatabase.Read(ctx, source, stream, tc, indexRows, stream.Metadata.GetSelectedProperties(), onResult, onCursor)
@@ -91,19 +96,21 @@ func Sync(ctx context.Context, mysqlDatabase PlanetScaleEdgeMysqlAccess, edgeDat
 				return err
 			}
 
+			recordWriter.Flush(stream)
+
 			if newCursor == nil {
 				return errors.New("should return valid cursor, got nil")
 			}
 
 			state.Streams[stream.Name].Shards[shard] = newCursor
 
-			if err := logger.State(*state); err != nil {
+			if err := recordWriter.State(*state); err != nil {
 				return errors.Wrap(err, "unable to serialize state")
 			}
 		}
 	}
 
-	return logger.State(*state)
+	return recordWriter.State(*state)
 }
 
 func printQueryResult(qr *sqltypes.Result, s Stream, recordWriter RecordWriter) error {

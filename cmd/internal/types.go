@@ -9,9 +9,16 @@ import (
 	"vitess.io/vitess/go/sqltypes"
 )
 
+type StatusLogger interface {
+	Log(message string)
+	Info(message string)
+	Error(message string)
+}
+
 type RecordWriter interface {
 	Flush(stream Stream) error
 	Record(record Record, stream Stream) error
+	State(state State) error
 }
 
 func TableCursorToSerializedCursor(cursor *psdbconnect.TableCursor) (*SerializedCursor, error) {

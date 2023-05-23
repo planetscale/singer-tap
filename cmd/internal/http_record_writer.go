@@ -4,8 +4,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"io/ioutil"
+	"path/filepath"
 	"time"
+
+	"github.com/pkg/errors"
 
 	"github.com/hashicorp/go-retryablehttp"
 )
@@ -15,32 +19,53 @@ const (
 	MaxBatchRequestSize int = 2 * 1024 * 1024
 )
 
-func NewHttpRecordWriter(batchSize int, apiURL, apiToken string) RecordWriter {
+func NewHttpRecordWriter(batchSize int, apiURL, apiToken, stateFileDir string, logger StatusLogger) RecordWriter {
 	client := retryablehttp.NewClient()
 	// Wait 3 seconds before retrying
 	client.RetryWaitMin = 3 * time.Second
 	client.Logger = nil
 	return &httpBatchWriter{
-		batchSize: batchSize,
-		apiURL:    apiURL,
-		apiToken:  apiToken,
-		client:    client,
-		messages:  make([]ImportMessage, 0, batchSize),
+		batchSize:    batchSize,
+		apiURL:       apiURL,
+		apiToken:     apiToken,
+		client:       client,
+		stateFileDir: stateFileDir,
+		logger:       logger,
+		messages:     make([]ImportMessage, 0, batchSize),
 	}
 }
 
 type httpBatchWriter struct {
-	batchSize int
-	apiURL    string
-	apiToken  string
-	logger    Logger
-	client    *retryablehttp.Client
-	messages  []ImportMessage
+	batchSize    int
+	apiURL       string
+	apiToken     string
+	client       *retryablehttp.Client
+	messages     []ImportMessage
+	stateFileDir string
+	logger       StatusLogger
 }
 
 type BatchResponse struct {
 	Status  string `json:"status"`
 	Message string `json:"message"`
+}
+
+func (h *httpBatchWriter) State(state State) error {
+	now := time.Now()
+
+	stateFileContents, err := json.Marshal(state)
+	if err != nil {
+		return err
+	}
+
+	statePath := filepath.Join(h.stateFileDir, fmt.Sprintf("state-%v.json", now.UnixMilli()))
+	h.logger.Info(fmt.Sprintf("saving state to path : %v", statePath))
+
+	if err := ioutil.WriteFile(statePath, stateFileContents, fs.ModePerm); err != nil {
+		h.logger.Info(fmt.Sprintf("unable to save state to path %v", statePath))
+		return errors.Wrap(err, "unable to save state")
+	}
+	return nil
 }
 
 func (h *httpBatchWriter) Flush(stream Stream) error {
@@ -49,7 +74,7 @@ func (h *httpBatchWriter) Flush(stream Stream) error {
 	}
 
 	batches := getBatchMessages(h.messages, stream, MaxObjectsInBatch, MaxBatchRequestSize)
-	fmt.Printf("flushing [%v] messages for stream %q in [%v] batches", len(h.messages), stream.Name, len(batches))
+	h.logger.Info(fmt.Sprintf("flushing [%v] messages for stream %q in [%v] batches", len(h.messages), stream.Name, len(batches)))
 	for _, batch := range batches {
 
 		b, err := json.Marshal(batch)
@@ -84,8 +109,6 @@ func (h *httpBatchWriter) Flush(stream Stream) error {
 		if err := decoder.Decode(&resp); err != nil {
 			return err
 		}
-
-		h.logger.Info(fmt.Sprintf("Server response status : %q, message : %q", resp.Status, resp.Message))
 	}
 	h.messages = h.messages[:0]
 

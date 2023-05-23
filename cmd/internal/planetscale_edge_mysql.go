@@ -211,6 +211,13 @@ func getJsonSchemaType(mysqlType string) StreamProperty {
 		return StreamProperty{Types: []string{"null", "string"}, CustomFormat: "timestamp_with_timezone"}
 	}
 
+	if strings.HasSuffix(mysqlType, "int") {
+		return StreamProperty{Types: []string{
+			"null",
+			"integer",
+		}}
+	}
+
 	switch mysqlType {
 	case "tinyint(1)":
 		return StreamProperty{Types: []string{"null", "boolean"}}

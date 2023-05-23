@@ -197,7 +197,9 @@ func (p PlanetScaleEdgeDatabase) sync(ctx context.Context, tc *psdbconnect.Table
 				}
 				sqlResult.Rows = append(sqlResult.Rows, row)
 				if onResult != nil {
-					onResult(sqlResult)
+					if err := onResult(sqlResult); err != nil {
+						return tc, err
+					}
 				}
 				// print Singer messages to stdout here.
 				// p.printQueryResult(sqlResult, s, indexRows)
