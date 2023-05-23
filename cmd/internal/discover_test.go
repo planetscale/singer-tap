@@ -2,9 +2,10 @@ package internal
 
 import (
 	"context"
+	"testing"
+
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestDiscover_CanFailIfCredentialsInvalid(t *testing.T) {
