@@ -83,8 +83,8 @@ func (p PlanetScaleEdgeDatabase) Read(ctx context.Context, ps PlanetScaleSource,
 			p.Logger.Info(preamble + "no new rows found, exiting")
 			return TableCursorToSerializedCursor(currentPosition)
 		}
-		p.Logger.Info(fmt.Sprintf("new rows found, syncing rows for %v", readDuration))
 		p.Logger.Info(fmt.Sprintf(preamble+"syncing rows with cursor [%v]", currentPosition))
+		p.Logger.Info(fmt.Sprintf(preamble+"latest database position is [%v]", latestCursorPosition))
 
 		currentPosition, err = p.sync(ctx, currentPosition, latestCursorPosition, table, ps, tabletType, readDuration, indexRows)
 		if currentPosition.Position != "" {
@@ -149,8 +149,6 @@ func (p PlanetScaleEdgeDatabase) sync(ctx context.Context, tc *psdbconnect.Table
 		filterFields(tc.LastKnownPk, s)
 		tc.Position = ""
 	}
-
-	p.Logger.Info(fmt.Sprintf("Syncing with cursor position : [%v], using last known PK : %v, stop cursor is : [%v]", tc.Position, tc.LastKnownPk != nil, stopPosition))
 
 	sReq := &psdbconnect.SyncRequest{
 		TableName:  s.Name,
