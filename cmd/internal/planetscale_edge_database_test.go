@@ -50,7 +50,7 @@ func TestRead_CanPeekBeforeRead(t *testing.T) {
 	cs := Stream{
 		Name: "stream",
 	}
-	sc, err := ped.Read(context.Background(), ps, cs, tc, false, nil)
+	sc, err := ped.Read(context.Background(), ps, cs, tc, false, nil, nil, nil)
 	assert.NoError(t, err)
 	esc, err := TableCursorToSerializedCursor(tc)
 	assert.NoError(t, err)
@@ -91,7 +91,7 @@ func TestRead_CanEarlyExitIfNoNewVGtidInPeek(t *testing.T) {
 	cs := Stream{
 		Name: "stream",
 	}
-	sc, err := ped.Read(context.Background(), ps, cs, tc, false, nil)
+	sc, err := ped.Read(context.Background(), ps, cs, tc, false, nil, nil, nil)
 	assert.NoError(t, err)
 	esc, err := TableCursorToSerializedCursor(tc)
 	assert.NoError(t, err)
@@ -133,7 +133,7 @@ func TestRead_CanPickPrimaryForShardedKeyspaces(t *testing.T) {
 	cs := Stream{
 		Name: "stream",
 	}
-	sc, err := ped.Read(context.Background(), ps, cs, tc, false, nil)
+	sc, err := ped.Read(context.Background(), ps, cs, tc, false, nil, nil, nil)
 	assert.NoError(t, err)
 	esc, err := TableCursorToSerializedCursor(tc)
 	assert.NoError(t, err)
@@ -241,7 +241,7 @@ func TestRead_CanPickPrimaryForUnshardedKeyspaces(t *testing.T) {
 	cs := Stream{
 		Name: "stream",
 	}
-	sc, err := ped.Read(context.Background(), ps, cs, tc, false, nil)
+	sc, err := ped.Read(context.Background(), ps, cs, tc, false, nil, nil, nil)
 	assert.NoError(t, err)
 	esc, err := TableCursorToSerializedCursor(tc)
 	assert.NoError(t, err)
@@ -285,7 +285,7 @@ func TestRead_CanReturnOriginalCursorIfNoNewFound(t *testing.T) {
 	cs := Stream{
 		Name: "stream",
 	}
-	sc, err := ped.Read(context.Background(), ps, cs, tc, false, nil)
+	sc, err := ped.Read(context.Background(), ps, cs, tc, false, nil, nil, nil)
 	assert.NoError(t, err)
 	esc, err := TableCursorToSerializedCursor(tc)
 	assert.NoError(t, err)
@@ -333,7 +333,7 @@ func TestRead_CanReturnNewCursorIfNewFound(t *testing.T) {
 	cs := Stream{
 		Name: "stream",
 	}
-	sc, err := ped.Read(context.Background(), ps, cs, tc, false, nil)
+	sc, err := ped.Read(context.Background(), ps, cs, tc, false, nil, nil, nil)
 	assert.NoError(t, err)
 	esc, err := TableCursorToSerializedCursor(newTC)
 	assert.NoError(t, err)
@@ -414,7 +414,7 @@ func TestRead_CanStopAtWellKnownCursor(t *testing.T) {
 		Name: "customers",
 	}
 
-	sc, err := ped.Read(context.Background(), ps, cs, responses[0].Cursor, false, nil)
+	sc, err := ped.Read(context.Background(), ps, cs, responses[0].Cursor, false, nil, nil, nil)
 	assert.NoError(t, err)
 	// sync should start at the first vgtid
 	esc, err := TableCursorToSerializedCursor(responses[nextVGtidPosition].Cursor)
@@ -517,7 +517,7 @@ func TestRead_CanLogResults(t *testing.T) {
 			},
 		},
 	}
-	sc, err := ped.Read(context.Background(), ps, cs, tc, false, nil)
+	sc, err := ped.Read(context.Background(), ps, cs, tc, false, nil, nil, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, sc)
 	assert.Equal(t, 2, len(tal.records["products"]))

@@ -4,6 +4,9 @@ import (
 	"context"
 	"fmt"
 
+	psdbconnect "github.com/planetscale/airbyte-source/proto/psdbconnect/v1alpha1"
+	"vitess.io/vitess/go/sqltypes"
+
 	"github.com/pkg/errors"
 )
 
@@ -70,7 +73,20 @@ func Sync(ctx context.Context, mysqlDatabase PlanetScaleEdgeMysqlAccess, edgeDat
 				logger.Info(fmt.Sprintf("stream's known position is %q", tc.Position))
 			}
 
-			newCursor, err := edgeDatabase.Read(ctx, source, stream, tc, indexRows, stream.Metadata.GetSelectedProperties())
+			onResult := func(sqlResult *sqltypes.Result) error {
+				return printQueryResult(sqlResult, stream, logger)
+			}
+
+			onCursor := func(cursor *psdbconnect.TableCursor) error {
+				sc, err := TableCursorToSerializedCursor(cursor)
+				if err != nil {
+					return err
+				}
+				state.Streams[stream.Name].Shards[shard] = sc
+				return logger.State(*state)
+			}
+
+			newCursor, err := edgeDatabase.Read(ctx, source, stream, tc, indexRows, stream.Metadata.GetSelectedProperties(), onResult, onCursor)
 			if err != nil {
 				return err
 			}
@@ -88,6 +104,32 @@ func Sync(ctx context.Context, mysqlDatabase PlanetScaleEdgeMysqlAccess, edgeDat
 	}
 
 	return logger.State(*state)
+}
+
+func printQueryResult(qr *sqltypes.Result, s Stream, logger Logger) error {
+	data := QueryResultToRecords(qr)
+	for _, datum := range data {
+		subset := map[string]interface{}{}
+		for _, selectedProperty := range s.Metadata.GetSelectedProperties() {
+			subset[selectedProperty] = datum[selectedProperty]
+			if len(s.Schema.Properties[selectedProperty].CustomFormat) > 0 {
+				if s.Schema.Properties[selectedProperty].CustomFormat == "date-time" {
+					subset[selectedProperty] = getISOTimeStamp(datum[selectedProperty].(sqltypes.Value).ToString())
+				} else {
+					subset[selectedProperty] = datum[selectedProperty].(sqltypes.Value).ToString()
+				}
+			}
+		}
+
+		record := NewRecord()
+		record.Stream = s.Name
+		record.Data = subset
+		if err := logger.Record(record, s); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func generateEmptyState(source PlanetScaleSource, catalog Catalog, shards []string) *State {
