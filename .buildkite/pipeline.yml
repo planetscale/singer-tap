@@ -22,7 +22,7 @@ steps:
 
   - name: "staticcheck"
     label: "Tests"
-    command: "make lint"
+    command: "go install honnef.co/go/tools/cmd/staticcheck@latest && staticcheck ./..."
     env:
       DOCKER_BUILDKIT: 1
     plugins:
