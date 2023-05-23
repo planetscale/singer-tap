@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-ARG GO_VERSION=1.18.3
+ARG GO_VERSION=1.20.1
 FROM golang:${GO_VERSION}-bullseye AS build
 
 WORKDIR /singer-tap
