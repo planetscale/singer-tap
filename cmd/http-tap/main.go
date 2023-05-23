@@ -5,13 +5,14 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"github.com/pkg/errors"
-	"github.com/planetscale/singer-tap/cmd/internal"
 	"io/fs"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/pkg/errors"
+	"github.com/planetscale/singer-tap/cmd/internal"
 )
 
 var (
@@ -42,7 +43,6 @@ func main() {
 }
 
 func execute(logger internal.Logger, apiUrl string, batchSize, bufferSize int, token string) error {
-
 	if len(token) == 0 {
 		return errors.New("Please specify a valid apiToken with the --api-token flag")
 	}
@@ -52,9 +52,7 @@ func execute(logger internal.Logger, apiUrl string, batchSize, bufferSize int, t
 	scanner := bufio.NewScanner(os.Stdin)
 	scanner.Buffer(buf, maxBufferSize)
 
-	var (
-		stream *internal.Stream
-	)
+	var stream *internal.Stream
 
 	recordCount := 0
 	batchWriter := internal.NewBatchWriter(batchSize, logger, apiUrl, apiToken)
@@ -67,7 +65,7 @@ func execute(logger internal.Logger, apiUrl string, batchSize, bufferSize int, t
 		if s != nil {
 			if s != stream && stream != nil {
 				// The schema we're writing out has changed, flush the messages so far.
-				if err := batchWriter.Flush(stream); err != nil {
+				if batchWriter.Flush(stream); err != nil {
 					return err
 				}
 				if recordCount > 0 {

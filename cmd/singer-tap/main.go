@@ -16,6 +16,7 @@ var (
 	commit             string
 	date               string
 	discoverMode       bool
+	commitMode         bool
 	catalogFilePath    string
 	configFilePath     string
 	stateFilePath      string
@@ -23,6 +24,11 @@ var (
 	useIncrementalSync bool
 	excludedTables     string
 	indexRows          bool
+	singerAPIURL       string
+	batchSize          int
+	bufferSize         int
+	apiToken           string
+	stateDirectory     string
 )
 
 func init() {
@@ -34,10 +40,24 @@ func init() {
 	flag.BoolVar(&useIncrementalSync, "incremental", false, "(discover mode only) all tables & views will be synced incrementally")
 	flag.BoolVar(&indexRows, "index-rows", false, "index all rows in the output")
 	flag.StringVar(&excludedTables, "excluded-tables", "", "(discover mode only) comma separated list of tables & views to exclude.")
+
+	// variables for http commit mode
+	flag.BoolVar(&commitMode, "commit", false, "Run this tap in commit mode")
+	flag.StringVar(&singerAPIURL, "api-url", "https://api.stitchdata.com", "API Url for Singer")
+	flag.IntVar(&batchSize, "batch-size", 9000, "size of each batch sent to Singer, default is 9000")
+	flag.StringVar(&apiToken, "api-token", "", "API Token to authenticate with Singer")
+	flag.StringVar(&stateDirectory, "state-directory", "state", "Directory to save any received state, default is state/")
+	flag.IntVar(&bufferSize, "buffer-size", 1024, "size of the buffer used to read lines from STDIN, default is 1024")
 }
 
 func main() {
 	flag.Parse()
+	if commitMode {
+		if len(apiToken) == 0 {
+			fmt.Println("Commit mode requires an apiToken, please provide a valid apiToken with the --api-token flag")
+			os.Exit(1)
+		}
+	}
 	logger := internal.NewLogger("PlanetScale Tap", os.Stdout, os.Stderr)
 	logger.Info(fmt.Sprintf("PlanetScale Singer Tap : version [%q], commit [%q], published on [%q]", version, commit, date))
 	err := execute(discoverMode, logger, configFilePath, catalogFilePath, stateFilePath)
@@ -48,7 +68,6 @@ func main() {
 }
 
 func execute(discoverMode bool, logger internal.Logger, configFilePath, catalogFilePath, stateFilePath string) error {
-
 	var (
 		sourceConfig internal.PlanetScaleSource
 		catalog      internal.Catalog
