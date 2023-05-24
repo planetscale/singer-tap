@@ -210,8 +210,6 @@ func (p PlanetScaleEdgeDatabase) sync(ctx context.Context, tc *psdbconnect.Table
 						return tc, err
 					}
 				}
-				// print Singer messages to stdout here.
-				// p.printQueryResult(sqlResult, s, indexRows)
 			}
 		}
 

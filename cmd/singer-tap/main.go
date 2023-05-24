@@ -26,7 +26,6 @@ var (
 	indexRows          bool
 	singerAPIURL       string
 	batchSize          int
-	bufferSize         int
 	apiToken           string
 	stateDirectory     string
 )
@@ -43,11 +42,10 @@ func init() {
 
 	// variables for http commit mode
 	flag.BoolVar(&commitMode, "commit", false, "Run this tap in commit mode")
-	flag.StringVar(&singerAPIURL, "api-url", "https://api.stitchdata.com", "API Url for Singer")
+	flag.StringVar(&singerAPIURL, "singer-api-url", "https://api.stitchdata.com", "API Url for Singer")
 	flag.IntVar(&batchSize, "batch-size", 9000, "size of each batch sent to Singer, default is 9000")
-	flag.StringVar(&apiToken, "api-token", "", "API Token to authenticate with Singer")
-	flag.StringVar(&stateDirectory, "state-directory", "state", "Directory to save any received state, default is state/")
-	flag.IntVar(&bufferSize, "buffer-size", 1024, "size of the buffer used to read lines from STDIN, default is 1024")
+	flag.StringVar(&apiToken, "singer-api-token", "", "API Token to authenticate with Singer")
+	flag.StringVar(&stateDirectory, "state-directory", "", "Directory to save any received state, default is state/")
 }
 
 func main() {
@@ -57,6 +55,11 @@ func main() {
 	if commitMode {
 		if len(apiToken) == 0 {
 			fmt.Println("Commit mode requires an apiToken, please provide a valid apiToken with the --api-token flag")
+			os.Exit(1)
+		}
+
+		if len(stateDirectory) == 0 {
+			fmt.Println("Commit mode requires a directory to store generated state files, please provide a valid path with the --state-directory flag")
 			os.Exit(1)
 		}
 
