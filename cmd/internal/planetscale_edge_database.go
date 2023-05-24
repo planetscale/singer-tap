@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strings"
 	"time"
 
 	querypb "vitess.io/vitess/go/vt/proto/query"
@@ -23,6 +24,10 @@ import (
 type (
 	OnResult func(*sqltypes.Result) error
 	OnCursor func(*psdbconnect.TableCursor) error
+)
+
+var (
+	BinlogsPurgedMessage = "Cannot replicate because the master purged required binary logs"
 )
 
 // PlanetScaleDatabase is a general purpose interface
@@ -87,8 +92,8 @@ func (p PlanetScaleEdgeDatabase) Read(ctx context.Context, ps PlanetScaleSource,
 			p.Logger.Info(preamble + "no new rows found, exiting")
 			return TableCursorToSerializedCursor(currentPosition)
 		}
-		p.Logger.Info(fmt.Sprintf("new rows found, syncing rows for %v", readDuration))
 		p.Logger.Info(fmt.Sprintf(preamble+"syncing rows with cursor [%v]", currentPosition))
+		p.Logger.Info(fmt.Sprintf(preamble+"latest database position is [%v]", latestCursorPosition))
 
 		currentPosition, err = p.sync(ctx, currentPosition, latestCursorPosition, table, columns, ps, tabletType, readDuration, indexRows, onResult, onCursor)
 		if currentPosition.Position != "" {
@@ -100,6 +105,14 @@ func (p PlanetScaleEdgeDatabase) Read(ctx context.Context, ps PlanetScaleSource,
 		}
 		if err != nil {
 			if s, ok := status.FromError(err); ok {
+
+				// if the error is unknown, it might be because the binlogs are purged, check for known error message
+				if s.Code() == codes.Unknown && lastKnownPosition != nil {
+					if strings.Contains(err.Error(), BinlogsPurgedMessage) {
+						p.Logger.Info("Binlogs are purged, state is stale")
+						return currentSerializedCursor, fmt.Errorf("state for this sync operation [%v] is stale, please restart a full sync to get the latest state", lastKnownPosition.Position)
+					}
+				}
 				// if the error is anything other than server timeout, keep going
 				if s.Code() != codes.DeadlineExceeded {
 					p.Logger.Info(fmt.Sprintf("%v Got error [%v], Returning with cursor :[%v] after server timeout", preamble, s.Code(), currentPosition))
@@ -153,8 +166,6 @@ func (p PlanetScaleEdgeDatabase) sync(ctx context.Context, tc *psdbconnect.Table
 		filterFields(tc.LastKnownPk, s)
 		tc.Position = ""
 	}
-
-	p.Logger.Info(fmt.Sprintf("Syncing with cursor position : [%v], using last known PK : %v, stop cursor is : [%v]", tc.Position, tc.LastKnownPk != nil, stopPosition))
 
 	sReq := &psdbconnect.SyncRequest{
 		TableName:  s.Name,

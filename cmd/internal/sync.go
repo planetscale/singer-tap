@@ -72,6 +72,7 @@ func Sync(ctx context.Context, mysqlDatabase PlanetScaleEdgeMysqlAccess, edgeDat
 			if err != nil {
 				return err
 			}
+
 			logger.Info(fmt.Sprintf("syncing rows from stream %q from shard %q at position [%v]", stream.Name, shard, tc.Position))
 			if len(tc.Position) > 0 {
 				logger.Info(fmt.Sprintf("stream's known position is %q", tc.Position))
