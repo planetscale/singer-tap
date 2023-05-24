@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/fs"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"time"
 
@@ -61,8 +62,8 @@ func (h *httpBatchWriter) State(state State) error {
 	statePath := filepath.Join(h.stateFileDir, fmt.Sprintf("state-%v.json", now.UnixMilli()))
 	h.logger.Info(fmt.Sprintf("saving state to path : %v", statePath))
 
-	if err := ioutil.WriteFile(statePath, stateFileContents, fs.ModePerm); err != nil {
-		h.logger.Info(fmt.Sprintf("unable to save state to path %v", statePath))
+	if err := os.WriteFile(statePath, stateFileContents, fs.ModePerm); err != nil {
+		h.logger.Error(fmt.Sprintf("unable to save state to path %v", statePath))
 		return errors.Wrap(err, "unable to save state")
 	}
 	return nil

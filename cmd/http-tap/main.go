@@ -65,7 +65,7 @@ func execute(logger internal.Logger, apiUrl string, batchSize, bufferSize int, t
 		if s != nil {
 			if s != stream && stream != nil {
 				// The schema we're writing out has changed, flush the messages so far.
-				if batchWriter.Flush(*stream); err != nil {
+				if err := batchWriter.Flush(*stream); err != nil {
 					return err
 				}
 				if recordCount > 0 {

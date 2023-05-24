@@ -33,19 +33,18 @@ var (
 func init() {
 	flag.BoolVar(&discoverMode, "discover", false, "Run this tap in discover mode")
 	flag.StringVar(&configFilePath, "config", "", "path to a configuration file for this tap")
-	flag.StringVar(&catalogFilePath, "catalog", "", "path to a catalog file for this tap")
-	flag.StringVar(&stateFilePath, "state", "", "path to state file for this configuration")
+	flag.StringVar(&catalogFilePath, "catalog", "", "(sync mode only) path to a catalog file for this tap")
+	flag.StringVar(&stateFilePath, "state", "", "(sync mode only) path to state file for this configuration")
 	flag.BoolVar(&autoSelect, "auto-select", false, "(discover mode only) select all tables & columns in the schema")
 	flag.BoolVar(&useIncrementalSync, "incremental", true, "(discover mode only) all tables & views will be synced incrementally")
-	flag.BoolVar(&indexRows, "index-rows", false, "index all rows in the output")
 	flag.StringVar(&excludedTables, "excluded-tables", "", "(discover mode only) comma separated list of tables & views to exclude.")
 
 	// variables for http commit mode
-	flag.BoolVar(&commitMode, "commit", false, "Run this tap in commit mode")
-	flag.StringVar(&singerAPIURL, "singer-api-url", "https://api.stitchdata.com", "API Url for Singer")
-	flag.IntVar(&batchSize, "batch-size", 9000, "size of each batch sent to Singer, default is 9000")
-	flag.StringVar(&apiToken, "singer-api-token", "", "API Token to authenticate with Singer")
-	flag.StringVar(&stateDirectory, "state-directory", "", "Directory to save any received state, default is state/")
+	flag.BoolVar(&commitMode, "commit", false, "(sync mode only) Run this tap in commit mode, sends rows to Stitch Import API")
+	flag.StringVar(&singerAPIURL, "singer-api-url", "https://api.stitchdata.com", "(sync mode only) API Url for Singer")
+	flag.IntVar(&batchSize, "batch-size", 9000, "(sync mode only) size of each batch sent to Singer")
+	flag.StringVar(&apiToken, "singer-api-token", "", "(sync mode only) API Token to authenticate with Singer")
+	flag.StringVar(&stateDirectory, "state-directory", "", "(sync mode only) Directory to save any received state")
 }
 
 func main() {

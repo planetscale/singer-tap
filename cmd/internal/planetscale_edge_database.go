@@ -26,7 +26,16 @@ type (
 	OnCursor func(*psdbconnect.TableCursor) error
 )
 
-var BinlogsPurgedMessage = "Cannot replicate because the master purged required binary logs"
+type ReadState struct {
+	source            PlanetScaleSource
+	Table             Stream
+	LastKnownPosition *psdbconnect.TableCursor
+	Columns           []string
+	OnResult          OnResult
+	OnCursor          OnCursor
+}
+
+var binlogsPurgedMessage = "Cannot replicate because the master purged required binary logs"
 
 // PlanetScaleDatabase is a general purpose interface
 // that defines all the data access methods needed for the PlanetScale Singer Tap to function.
@@ -106,7 +115,7 @@ func (p PlanetScaleEdgeDatabase) Read(ctx context.Context, ps PlanetScaleSource,
 
 				// if the error is unknown, it might be because the binlogs are purged, check for known error message
 				if s.Code() == codes.Unknown && lastKnownPosition != nil {
-					if strings.Contains(err.Error(), BinlogsPurgedMessage) {
+					if strings.Contains(err.Error(), binlogsPurgedMessage) {
 						p.Logger.Info("Binlogs are purged, state is stale")
 						return currentSerializedCursor, fmt.Errorf("state for this sync operation [%v] is stale, please restart a full sync to get the latest state", lastKnownPosition.Position)
 					}
