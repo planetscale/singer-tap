@@ -103,7 +103,6 @@ type connectSyncClientMock struct {
 }
 
 func (x *connectSyncClientMock) Recv() (*psdbconnect.SyncResponse, error) {
-
 	if x.syncError != nil {
 		return nil, x.syncError
 	}

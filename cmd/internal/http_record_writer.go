@@ -75,8 +75,11 @@ func (h *httpBatchWriter) Flush(stream Stream) error {
 
 	batches := getBatchMessages(h.messages, stream, MaxObjectsInBatch, MaxBatchRequestSize)
 	h.logger.Info(fmt.Sprintf("flushing [%v] messages for stream %q in [%v] batches", len(h.messages), stream.Name, len(batches)))
-	for _, batch := range batches {
+	if len(batches) > 0 {
+		h.printLastPKSynced(batches[len(batches)-1], stream)
+	}
 
+	for _, batch := range batches {
 		b, err := json.Marshal(batch)
 		if err != nil {
 			return err
@@ -113,6 +116,20 @@ func (h *httpBatchWriter) Flush(stream Stream) error {
 	h.messages = h.messages[:0]
 
 	return nil
+}
+
+func (h *httpBatchWriter) printLastPKSynced(batch ImportBatch, stream Stream) {
+	if len(batch.Messages) == 0 {
+		return
+	}
+
+	lastRowSynced := batch.Messages[len(batch.Messages)-1]
+	msg := fmt.Sprintf("Last row for table [%v] in the last batch  has primary keys : [ ", stream.TableName)
+	for _, keyProp := range stream.KeyProperties {
+		msg += fmt.Sprintf("{ %s : %v } ", keyProp, lastRowSynced.Data[keyProp])
+	}
+	msg += "]"
+	h.logger.Info(msg)
 }
 
 func (h *httpBatchWriter) Record(record Record, stream Stream) error {

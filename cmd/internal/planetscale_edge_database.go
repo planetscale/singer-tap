@@ -26,9 +26,7 @@ type (
 	OnCursor func(*psdbconnect.TableCursor) error
 )
 
-var (
-	BinlogsPurgedMessage = "Cannot replicate because the master purged required binary logs"
-)
+var BinlogsPurgedMessage = "Cannot replicate because the master purged required binary logs"
 
 // PlanetScaleDatabase is a general purpose interface
 // that defines all the data access methods needed for the PlanetScale Singer Tap to function.
