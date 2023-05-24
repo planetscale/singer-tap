@@ -26,15 +26,6 @@ type (
 	OnCursor func(*psdbconnect.TableCursor) error
 )
 
-type ReadState struct {
-	source            PlanetScaleSource
-	Table             Stream
-	LastKnownPosition *psdbconnect.TableCursor
-	Columns           []string
-	OnResult          OnResult
-	OnCursor          OnCursor
-}
-
 var binlogsPurgedMessage = "Cannot replicate because the master purged required binary logs"
 
 // PlanetScaleDatabase is a general purpose interface
