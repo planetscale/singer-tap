@@ -92,7 +92,7 @@ func Sync(ctx context.Context, mysqlDatabase PlanetScaleEdgeMysqlAccess, edgeDat
 				return nil
 			}
 
-			newCursor, err := edgeDatabase.Read(ctx, source, stream, tc, indexRows, stream.Metadata.GetSelectedProperties(), onResult, onCursor)
+			newCursor, err := edgeDatabase.Read(ctx, source, stream, tc, stream.Metadata.GetSelectedProperties(), onResult, onCursor)
 			if err != nil {
 				return err
 			}

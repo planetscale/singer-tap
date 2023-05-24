@@ -32,7 +32,7 @@ var BinlogsPurgedMessage = "Cannot replicate because the master purged required 
 // that defines all the data access methods needed for the PlanetScale Singer Tap to function.
 type PlanetScaleDatabase interface {
 	CanConnect(ctx context.Context, ps PlanetScaleSource) error
-	Read(ctx context.Context, ps PlanetScaleSource, table Stream, lastKnownPosition *psdbconnect.TableCursor, indexRows bool, columns []string, onResult OnResult, onCursor OnCursor) (*SerializedCursor, error)
+	Read(ctx context.Context, ps PlanetScaleSource, table Stream, lastKnownPosition *psdbconnect.TableCursor, columns []string, onResult OnResult, onCursor OnCursor) (*SerializedCursor, error)
 	Close() error
 }
 
@@ -66,7 +66,7 @@ func (p PlanetScaleEdgeDatabase) Close() error {
 // 3. Ask vstream to stream from the last known vgtid
 // 4. When we reach the stopping point, read all rows available at this vgtid
 // 5. End the stream when (a) a vgtid newer than latest vgtid is encountered or (b) the timeout kicks in.
-func (p PlanetScaleEdgeDatabase) Read(ctx context.Context, ps PlanetScaleSource, table Stream, lastKnownPosition *psdbconnect.TableCursor, indexRows bool, columns []string, onResult OnResult, onCursor OnCursor) (*SerializedCursor, error) {
+func (p PlanetScaleEdgeDatabase) Read(ctx context.Context, ps PlanetScaleSource, table Stream, lastKnownPosition *psdbconnect.TableCursor, columns []string, onResult OnResult, onCursor OnCursor) (*SerializedCursor, error) {
 	var (
 		err                     error
 		sErr                    error
@@ -93,7 +93,7 @@ func (p PlanetScaleEdgeDatabase) Read(ctx context.Context, ps PlanetScaleSource,
 		p.Logger.Info(fmt.Sprintf(preamble+"syncing rows with cursor [%v]", currentPosition))
 		p.Logger.Info(fmt.Sprintf(preamble+"latest database position is [%v]", latestCursorPosition))
 
-		currentPosition, err = p.sync(ctx, currentPosition, latestCursorPosition, table, columns, ps, tabletType, readDuration, indexRows, onResult, onCursor)
+		currentPosition, err = p.sync(ctx, currentPosition, latestCursorPosition, table, columns, ps, tabletType, readDuration, onResult, onCursor)
 		if currentPosition.Position != "" {
 			currentSerializedCursor, sErr = TableCursorToSerializedCursor(currentPosition)
 			if sErr != nil {
@@ -129,7 +129,7 @@ func (p PlanetScaleEdgeDatabase) Read(ctx context.Context, ps PlanetScaleSource,
 	}
 }
 
-func (p PlanetScaleEdgeDatabase) sync(ctx context.Context, tc *psdbconnect.TableCursor, stopPosition string, s Stream, columns []string, ps PlanetScaleSource, tabletType psdbconnect.TabletType, readDuration time.Duration, indexRows bool, onResult OnResult, onCursor OnCursor) (*psdbconnect.TableCursor, error) {
+func (p PlanetScaleEdgeDatabase) sync(ctx context.Context, tc *psdbconnect.TableCursor, stopPosition string, s Stream, columns []string, ps PlanetScaleSource, tabletType psdbconnect.TabletType, readDuration time.Duration, onResult OnResult, onCursor OnCursor) (*psdbconnect.TableCursor, error) {
 	defer p.Logger.Flush(s)
 	ctx, cancel := context.WithTimeout(ctx, readDuration)
 	defer cancel()
