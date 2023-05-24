@@ -66,10 +66,6 @@ func Sync(ctx context.Context, mysqlDatabase PlanetScaleEdgeMysqlAccess, edgeDat
 				return err
 			}
 
-			if len(tc.Position) > 0 {
-				logger.Info(fmt.Sprintf("stream's known position is %q", tc.Position))
-			}
-
 			newCursor, err := edgeDatabase.Read(ctx, source, stream, tc, indexRows, stream.Metadata.GetSelectedProperties())
 			if err != nil {
 				return err

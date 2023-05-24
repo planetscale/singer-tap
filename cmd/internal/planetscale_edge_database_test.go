@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"testing"
 	"time"
 
@@ -426,6 +428,65 @@ func TestRead_CanStopAtWellKnownCursor(t *testing.T) {
 	assert.Equal(t, "[customers shard : -] Finished reading all rows for table [customers]", logLines[len(logLines)-1])
 	records := tal.records["customers"]
 	assert.Equal(t, 2*(nextVGtidPosition/3), len(records))
+}
+
+func TestRead_CanDetectPurgedBinlogs(t *testing.T) {
+	tma := getTestMysqlAccess()
+	tal := testSingerLogger{}
+	ped := PlanetScaleEdgeDatabase{
+		Logger: &tal,
+		Mysql:  tma,
+	}
+
+	syncClient := &connectSyncClientMock{
+		syncError: status.Error(codes.Unknown, "Cannot replicate because the master purged required binary logs."+
+			"Replicate the missing transactions from elsewhere, or provision a new slave from backup."+
+			" Consider increasing the master's binary log expiration period"),
+	}
+
+	staleCursor := &psdbconnect.TableCursor{
+		Shard:    "-",
+		Keyspace: "connect-test",
+		Position: "e4e20f06-e28f-11ec-8d20-8e7ac09cb64c:1-0",
+	}
+	getCurrentVGtidClient := &connectSyncClientMock{
+		syncResponses: []*psdbconnect.SyncResponse{
+			{
+				Cursor: &psdbconnect.TableCursor{
+					Shard:    "-",
+					Keyspace: "connect-test",
+					Position: "e4e20f06-e28f-11ec-8d20-8e7ac09cb64c:1-20",
+				},
+			},
+		},
+	}
+
+	cc := clientConnectionMock{
+		syncFn: func(ctx context.Context, in *psdbconnect.SyncRequest, opts ...grpc.CallOption) (psdbconnect.Connect_SyncClient, error) {
+			assert.Equal(t, psdbconnect.TabletType_primary, in.TabletType)
+			if in.Cursor.Position == "current" {
+				return getCurrentVGtidClient, nil
+			}
+
+			return syncClient, nil
+		},
+	}
+
+	ped.clientFn = func(ctx context.Context, ps PlanetScaleSource) (psdbconnect.ConnectClient, error) {
+		return &cc, nil
+	}
+	ps := PlanetScaleSource{
+		Database: "connect-test",
+	}
+	cs := Stream{
+		Name: "customers",
+	}
+
+	_, err := ped.Read(context.Background(), ps, cs, staleCursor, false, nil)
+	assert.ErrorContains(t, err, "state for this sync operation [e4e20f06-e28f-11ec-8d20-8e7ac09cb64c:1-0] is stale")
+
+	logLines := tal.logMessages
+	assert.Equal(t, "Binlogs are purged, state is stale", logLines[len(logLines)-1])
 }
 
 func TestRead_CanLogResults(t *testing.T) {
