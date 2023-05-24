@@ -9,6 +9,10 @@ import (
 	"google.golang.org/grpc"
 )
 
+func NewTestLogger() Logger {
+	return &testSingerLogger{}
+}
+
 type testSingerLogger struct {
 	logMessages   []string
 	records       map[string][]Record
