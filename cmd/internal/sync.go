@@ -63,9 +63,6 @@ func Sync(ctx context.Context, mysqlDatabase PlanetScaleEdgeMysqlAccess, edgeDat
 		}
 
 		for shard, cursor := range streamShardStates {
-			defer func() {
-				recordWriter.State(*state)
-			}()
 
 			logger.Info(fmt.Sprintf("known position is %v", cursor.Cursor))
 			tc, err := cursor.SerializedCursorToTableCursor()
@@ -88,8 +85,7 @@ func Sync(ctx context.Context, mysqlDatabase PlanetScaleEdgeMysqlAccess, edgeDat
 					return err
 				}
 				state.Streams[stream.Name].Shards[shard] = sc
-				recordWriter.Flush(stream)
-				return nil
+				return recordWriter.Flush(stream)
 			}
 
 			newCursor, err := edgeDatabase.Read(ctx, source, stream, tc, stream.Metadata.GetSelectedProperties(), onResult, onCursor)
@@ -97,7 +93,9 @@ func Sync(ctx context.Context, mysqlDatabase PlanetScaleEdgeMysqlAccess, edgeDat
 				return err
 			}
 
-			recordWriter.Flush(stream)
+			if err := recordWriter.Flush(stream); err != nil {
+				return errors.Wrap(err, "unable to flush records")
+			}
 
 			if newCursor == nil {
 				return errors.New("should return valid cursor, got nil")

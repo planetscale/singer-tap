@@ -221,7 +221,7 @@ func TestSync_PrintsStreamState(t *testing.T) {
 
 	err := Sync(context.Background(), tma, ped, logger, source, catalog, nil, false, logger)
 	assert.Nil(t, err)
-	assert.Len(t, logger.state, 3)
+	assert.Len(t, logger.state, 2)
 	lastState := logger.state[1]
 	assert.NotNil(t, lastState)
 	assert.NotEmpty(t, lastState)
@@ -334,7 +334,7 @@ func TestSync_PrintsOldStateIfNoNewStateFound(t *testing.T) {
 	assert.Equal(t, source.Database, cursor.Keyspace)
 	assert.Equal(t, "-", cursor.Shard)
 	assert.Equal(t, "i-know-what-you-synced-last-summer", cursor.Position)
-	assert.Len(t, logger.state, 3)
+	assert.Len(t, logger.state, 2)
 	lastState := logger.state[1]
 	assert.NotNil(t, lastState)
 	assert.NotEmpty(t, lastState)
@@ -404,7 +404,7 @@ func TestSync_PrintsNewStateIfFound(t *testing.T) {
 	assert.Equal(t, source.Database, cursor.Keyspace)
 	assert.Equal(t, "-", cursor.Shard)
 	assert.Equal(t, "i-know-what-you-synced-last-summer", cursor.Position)
-	assert.Len(t, logger.state, 3)
+	assert.Len(t, logger.state, 2)
 	lastState := logger.state[1]
 	assert.NotNil(t, lastState)
 	assert.NotEmpty(t, lastState)
