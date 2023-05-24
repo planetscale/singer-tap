@@ -15,7 +15,7 @@ type Logger interface {
 	StreamSchema(Stream) error
 	Record(Record, Stream) error
 	State(State) error
-	Flush(Stream)
+	Flush(Stream) error
 }
 
 const MaxBatchSize = 10000
@@ -83,9 +83,10 @@ func (sl *singerLogger) Record(r Record, s Stream) error {
 	return nil
 }
 
-func (sl *singerLogger) Flush(s Stream) {
+func (sl *singerLogger) Flush(s Stream) error {
 	for _, record := range sl.records {
 		sl.recordEncoder.Encode(record)
 	}
 	sl.records = sl.records[:0]
+	return nil
 }

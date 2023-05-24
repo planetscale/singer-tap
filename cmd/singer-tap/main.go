@@ -16,6 +16,7 @@ var (
 	commit             string
 	date               string
 	discoverMode       bool
+	commitMode         bool
 	catalogFilePath    string
 	configFilePath     string
 	stateFilePath      string
@@ -23,31 +24,57 @@ var (
 	useIncrementalSync bool
 	excludedTables     string
 	indexRows          bool
+	singerAPIURL       string
+	batchSize          int
+	apiToken           string
+	stateDirectory     string
 )
 
 func init() {
 	flag.BoolVar(&discoverMode, "discover", false, "Run this tap in discover mode")
 	flag.StringVar(&configFilePath, "config", "", "path to a configuration file for this tap")
-	flag.StringVar(&catalogFilePath, "catalog", "", "path to a catalog file for this tap")
-	flag.StringVar(&stateFilePath, "state", "", "path to state file for this configuration")
+	flag.StringVar(&catalogFilePath, "catalog", "", "(sync mode only) path to a catalog file for this tap")
+	flag.StringVar(&stateFilePath, "state", "", "(sync mode only) path to state file for this configuration")
 	flag.BoolVar(&autoSelect, "auto-select", false, "(discover mode only) select all tables & columns in the schema")
-	flag.BoolVar(&useIncrementalSync, "incremental", false, "(discover mode only) all tables & views will be synced incrementally")
-	flag.BoolVar(&indexRows, "index-rows", false, "index all rows in the output")
+	flag.BoolVar(&useIncrementalSync, "incremental", true, "(discover mode only) all tables & views will be synced incrementally")
 	flag.StringVar(&excludedTables, "excluded-tables", "", "(discover mode only) comma separated list of tables & views to exclude.")
+
+	// variables for http commit mode
+	flag.BoolVar(&commitMode, "commit", false, "(sync mode only) Run this tap in commit mode, sends rows to Stitch Import API")
+	flag.StringVar(&singerAPIURL, "singer-api-url", "https://api.stitchdata.com", "(sync mode only) API Url for Singer")
+	flag.IntVar(&batchSize, "batch-size", 9000, "(sync mode only) size of each batch sent to Singer")
+	flag.StringVar(&apiToken, "singer-api-token", "", "(sync mode only) API Token to authenticate with Singer")
+	flag.StringVar(&stateDirectory, "state-directory", "", "(sync mode only) Directory to save any received state")
 }
 
 func main() {
 	flag.Parse()
+	var recordWriter internal.RecordWriter
 	logger := internal.NewLogger("PlanetScale Tap", os.Stdout, os.Stderr)
+	if commitMode {
+		if len(apiToken) == 0 {
+			fmt.Println("Commit mode requires an apiToken, please provide a valid apiToken with the --api-token flag")
+			os.Exit(1)
+		}
+
+		if len(stateDirectory) == 0 {
+			fmt.Println("Commit mode requires a directory to store generated state files, please provide a valid path with the --state-directory flag")
+			os.Exit(1)
+		}
+
+		recordWriter = internal.NewHttpRecordWriter(batchSize, singerAPIURL, apiToken, stateDirectory, logger)
+	} else {
+		recordWriter = logger
+	}
 	logger.Info(fmt.Sprintf("PlanetScale Singer Tap : version [%q], commit [%q], published on [%q]", version, commit, date))
-	err := execute(discoverMode, logger, configFilePath, catalogFilePath, stateFilePath)
+	err := execute(discoverMode, logger, configFilePath, catalogFilePath, stateFilePath, recordWriter)
 	if err != nil {
 		logger.Error(err.Error())
 		os.Exit(1)
 	}
 }
 
-func execute(discoverMode bool, logger internal.Logger, configFilePath, catalogFilePath, stateFilePath string) error {
+func execute(discoverMode bool, logger internal.Logger, configFilePath, catalogFilePath, stateFilePath string, recordWriter internal.RecordWriter) error {
 	var (
 		sourceConfig internal.PlanetScaleSource
 		catalog      internal.Catalog
@@ -94,10 +121,10 @@ func execute(discoverMode bool, logger internal.Logger, configFilePath, catalogF
 		}
 	}
 
-	return sync(context.Background(), logger, sourceConfig, catalog, state)
+	return sync(context.Background(), logger, sourceConfig, catalog, state, recordWriter)
 }
 
-func sync(ctx context.Context, logger internal.Logger, source internal.PlanetScaleSource, catalog internal.Catalog, state *internal.State) error {
+func sync(ctx context.Context, logger internal.Logger, source internal.PlanetScaleSource, catalog internal.Catalog, state *internal.State, recordWriter internal.RecordWriter) error {
 	logger.Info(fmt.Sprintf("Syncing records for PlanetScale database : %v", source.Database))
 	mysql, err := internal.NewMySQL(&source)
 	if err != nil {
@@ -106,7 +133,7 @@ func sync(ctx context.Context, logger internal.Logger, source internal.PlanetSca
 	defer mysql.Close()
 	ped := internal.NewEdge(mysql, logger)
 
-	return internal.Sync(ctx, mysql, ped, logger, source, catalog, state, indexRows)
+	return internal.Sync(ctx, mysql, ped, logger, source, catalog, state, indexRows, recordWriter)
 }
 
 func discover(ctx context.Context, logger internal.Logger, source internal.PlanetScaleSource, settings internal.DiscoverSettings) error {

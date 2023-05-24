@@ -55,7 +55,7 @@ func execute(logger internal.Logger, apiUrl string, batchSize, bufferSize int, t
 	var stream *internal.Stream
 
 	recordCount := 0
-	batchWriter := internal.NewBatchWriter(batchSize, logger, apiUrl, apiToken)
+	batchWriter := internal.NewHttpRecordWriter(batchSize, apiUrl, apiToken, "", nil)
 	for scanner.Scan() {
 		s, r, err := parseInput(scanner.Text(), logger)
 		if err != nil {
@@ -65,7 +65,7 @@ func execute(logger internal.Logger, apiUrl string, batchSize, bufferSize int, t
 		if s != nil {
 			if s != stream && stream != nil {
 				// The schema we're writing out has changed, flush the messages so far.
-				if err := batchWriter.Flush(stream); err != nil {
+				if err := batchWriter.Flush(*stream); err != nil {
 					return err
 				}
 				if recordCount > 0 {
@@ -80,7 +80,7 @@ func execute(logger internal.Logger, apiUrl string, batchSize, bufferSize int, t
 
 		if r != nil {
 			recordCount += 1
-			if err := batchWriter.Send(r, stream); err != nil {
+			if err := batchWriter.Record(*r, *stream); err != nil {
 				return err
 			}
 		}
@@ -93,7 +93,7 @@ func execute(logger internal.Logger, apiUrl string, batchSize, bufferSize int, t
 	if recordCount > 0 {
 		logger.Info(fmt.Sprintf("Published [%v] records for stream %q", recordCount, stream.Name))
 	}
-	return batchWriter.Flush(stream)
+	return batchWriter.Flush(*stream)
 }
 
 func parseInput(input string, logger internal.Logger) (*internal.Stream, *internal.Record, error) {

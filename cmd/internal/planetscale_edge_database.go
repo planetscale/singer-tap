@@ -21,15 +21,18 @@ import (
 	_ "vitess.io/vitess/go/vt/vtgate/grpcvtgateconn"
 )
 
-var (
-	BinlogsPurgedMessage = "Cannot replicate because the master purged required binary logs"
+type (
+	OnResult func(*sqltypes.Result) error
+	OnCursor func(*psdbconnect.TableCursor) error
 )
+
+var binlogsPurgedMessage = "Cannot replicate because the master purged required binary logs"
 
 // PlanetScaleDatabase is a general purpose interface
 // that defines all the data access methods needed for the PlanetScale Singer Tap to function.
 type PlanetScaleDatabase interface {
 	CanConnect(ctx context.Context, ps PlanetScaleSource) error
-	Read(ctx context.Context, ps PlanetScaleSource, s Stream, tc *psdbconnect.TableCursor, indexRows bool, columns []string) (*SerializedCursor, error)
+	Read(ctx context.Context, ps PlanetScaleSource, table Stream, lastKnownPosition *psdbconnect.TableCursor, columns []string, onResult OnResult, onCursor OnCursor) (*SerializedCursor, error)
 	Close() error
 }
 
@@ -44,7 +47,6 @@ func NewEdge(mysql PlanetScaleEdgeMysqlAccess, logger Logger) PlanetScaleDatabas
 // It uses the mysql interface provided by PlanetScale for all schema/shard/tablet discovery and
 // the grpc API for incrementally syncing rows from PlanetScale.
 type PlanetScaleEdgeDatabase struct {
-	rowIndex int64
 	Logger   Logger
 	Mysql    PlanetScaleEdgeMysqlAccess
 	clientFn func(ctx context.Context, ps PlanetScaleSource) (psdbconnect.ConnectClient, error)
@@ -64,7 +66,7 @@ func (p PlanetScaleEdgeDatabase) Close() error {
 // 3. Ask vstream to stream from the last known vgtid
 // 4. When we reach the stopping point, read all rows available at this vgtid
 // 5. End the stream when (a) a vgtid newer than latest vgtid is encountered or (b) the timeout kicks in.
-func (p PlanetScaleEdgeDatabase) Read(ctx context.Context, ps PlanetScaleSource, table Stream, lastKnownPosition *psdbconnect.TableCursor, indexRows bool, columns []string) (*SerializedCursor, error) {
+func (p PlanetScaleEdgeDatabase) Read(ctx context.Context, ps PlanetScaleSource, table Stream, lastKnownPosition *psdbconnect.TableCursor, columns []string, onResult OnResult, onCursor OnCursor) (*SerializedCursor, error) {
 	var (
 		err                     error
 		sErr                    error
@@ -76,7 +78,6 @@ func (p PlanetScaleEdgeDatabase) Read(ctx context.Context, ps PlanetScaleSource,
 
 	readDuration := 90 * time.Second
 	preamble := fmt.Sprintf("[%v shard : %v] ", table.Name, currentPosition.Shard)
-	p.rowIndex = 0
 	for {
 		p.Logger.Info(preamble + "peeking to see if there's any new rows")
 		latestCursorPosition, lcErr := p.getLatestCursorPosition(ctx, currentPosition.Shard, currentPosition.Keyspace, table, ps, tabletType)
@@ -92,7 +93,7 @@ func (p PlanetScaleEdgeDatabase) Read(ctx context.Context, ps PlanetScaleSource,
 		p.Logger.Info(fmt.Sprintf(preamble+"syncing rows with cursor [%v]", currentPosition))
 		p.Logger.Info(fmt.Sprintf(preamble+"latest database position is [%v]", latestCursorPosition))
 
-		currentPosition, err = p.sync(ctx, currentPosition, latestCursorPosition, table, columns, ps, tabletType, readDuration, indexRows)
+		currentPosition, err = p.sync(ctx, currentPosition, latestCursorPosition, table, columns, ps, tabletType, readDuration, onResult, onCursor)
 		if currentPosition.Position != "" {
 			currentSerializedCursor, sErr = TableCursorToSerializedCursor(currentPosition)
 			if sErr != nil {
@@ -105,7 +106,7 @@ func (p PlanetScaleEdgeDatabase) Read(ctx context.Context, ps PlanetScaleSource,
 
 				// if the error is unknown, it might be because the binlogs are purged, check for known error message
 				if s.Code() == codes.Unknown && lastKnownPosition != nil {
-					if strings.Contains(err.Error(), BinlogsPurgedMessage) {
+					if strings.Contains(err.Error(), binlogsPurgedMessage) {
 						p.Logger.Info("Binlogs are purged, state is stale")
 						return currentSerializedCursor, fmt.Errorf("state for this sync operation [%v] is stale, please restart a full sync to get the latest state", lastKnownPosition.Position)
 					}
@@ -128,7 +129,7 @@ func (p PlanetScaleEdgeDatabase) Read(ctx context.Context, ps PlanetScaleSource,
 	}
 }
 
-func (p PlanetScaleEdgeDatabase) sync(ctx context.Context, tc *psdbconnect.TableCursor, stopPosition string, s Stream, columns []string, ps PlanetScaleSource, tabletType psdbconnect.TabletType, readDuration time.Duration, indexRows bool) (*psdbconnect.TableCursor, error) {
+func (p PlanetScaleEdgeDatabase) sync(ctx context.Context, tc *psdbconnect.TableCursor, stopPosition string, s Stream, columns []string, ps PlanetScaleSource, tabletType psdbconnect.TabletType, readDuration time.Duration, onResult OnResult, onCursor OnCursor) (*psdbconnect.TableCursor, error) {
 	defer p.Logger.Flush(s)
 	ctx, cancel := context.WithTimeout(ctx, readDuration)
 	defer cancel()
@@ -204,10 +205,16 @@ func (p PlanetScaleEdgeDatabase) sync(ctx context.Context, tc *psdbconnect.Table
 					Fields: result.Fields,
 				}
 				sqlResult.Rows = append(sqlResult.Rows, row)
-				p.rowIndex += 1
-				// print Singer messages to stdout here.
-				p.printQueryResult(sqlResult, s, indexRows)
+				if onResult != nil {
+					if err := onResult(sqlResult); err != nil {
+						return tc, err
+					}
+				}
 			}
+		}
+
+		if onCursor != nil && res.Cursor != nil {
+			onCursor(res.Cursor)
 		}
 
 		if watchForVgGtidChange && tc.Position != stopPosition {
@@ -297,33 +304,6 @@ func (p PlanetScaleEdgeDatabase) getLatestCursorPosition(ctx context.Context, sh
 		if res.Cursor != nil {
 			return res.Cursor.Position, nil
 		}
-	}
-}
-
-// printQueryResult will pretty-print a Singer Record to the logger.
-// Copied from vtctl/query.go
-func (p PlanetScaleEdgeDatabase) printQueryResult(qr *sqltypes.Result, s Stream, indexRows bool) {
-	data := QueryResultToRecords(qr)
-	for _, datum := range data {
-		subset := map[string]interface{}{}
-		for _, selectedProperty := range s.Metadata.GetSelectedProperties() {
-			subset[selectedProperty] = datum[selectedProperty]
-			if len(s.Schema.Properties[selectedProperty].CustomFormat) > 0 {
-				if s.Schema.Properties[selectedProperty].CustomFormat == "date-time" {
-					subset[selectedProperty] = getISOTimeStamp(datum[selectedProperty].(sqltypes.Value).ToString())
-				} else {
-					subset[selectedProperty] = datum[selectedProperty].(sqltypes.Value).ToString()
-				}
-			}
-		}
-
-		if indexRows {
-			subset["index"] = p.rowIndex
-		}
-		record := NewRecord()
-		record.Stream = s.Name
-		record.Data = subset
-		p.Logger.Record(record, s)
 	}
 }
 

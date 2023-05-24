@@ -9,6 +9,18 @@ import (
 	"vitess.io/vitess/go/sqltypes"
 )
 
+type StatusLogger interface {
+	Log(message string)
+	Info(message string)
+	Error(message string)
+}
+
+type RecordWriter interface {
+	Flush(stream Stream) error
+	Record(record Record, stream Stream) error
+	State(state State) error
+}
+
 func TableCursorToSerializedCursor(cursor *psdbconnect.TableCursor) (*SerializedCursor, error) {
 	d, err := codec.DefaultCodec.Marshal(cursor)
 	if err != nil {
@@ -191,7 +203,6 @@ func (s *Stream) GetTableMetadata() (*Metadata, error) {
 //	           }
 //	       }
 //	   }
-
 func (m MetadataCollection) GetPropertyMap() map[string]Metadata {
 	propertyMap := make(map[string]Metadata, len(m)-1)
 	for _, nm := range m {

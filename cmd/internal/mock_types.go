@@ -9,6 +9,10 @@ import (
 	"google.golang.org/grpc"
 )
 
+func NewTestLogger() Logger {
+	return &testSingerLogger{}
+}
+
 type testSingerLogger struct {
 	logMessages   []string
 	records       map[string][]Record
@@ -30,7 +34,7 @@ func (tal *testSingerLogger) Info(message string) {
 type testPlanetScaleEdgeDatabase struct {
 	CanConnectFn        func(ctx context.Context, ps PlanetScaleSource) error
 	CanConnectFnInvoked bool
-	ReadFn              func(ctx context.Context, ps PlanetScaleSource, s Stream, tc *psdbconnect.TableCursor, indexRows bool) (*SerializedCursor, error)
+	ReadFn              func(ctx context.Context, ps PlanetScaleSource, s Stream, tc *psdbconnect.TableCursor) (*SerializedCursor, error)
 	ReadFnInvoked       bool
 }
 
@@ -39,9 +43,9 @@ func (tpe *testPlanetScaleEdgeDatabase) CanConnect(ctx context.Context, ps Plane
 	return tpe.CanConnectFn(ctx, ps)
 }
 
-func (tpe *testPlanetScaleEdgeDatabase) Read(ctx context.Context, ps PlanetScaleSource, s Stream, tc *psdbconnect.TableCursor, indexRows bool, columns []string) (*SerializedCursor, error) {
+func (tpe *testPlanetScaleEdgeDatabase) Read(ctx context.Context, ps PlanetScaleSource, table Stream, lastKnownPosition *psdbconnect.TableCursor, columns []string, onResult OnResult, onCursor OnCursor) (*SerializedCursor, error) {
 	tpe.ReadFnInvoked = true
-	return tpe.ReadFn(ctx, ps, s, tc, indexRows)
+	return tpe.ReadFn(ctx, ps, table, lastKnownPosition)
 }
 
 func (tpe *testPlanetScaleEdgeDatabase) Close() error {
@@ -85,7 +89,8 @@ func (tal *testSingerLogger) Record(record Record, stream Stream) error {
 	return nil
 }
 
-func (tal *testSingerLogger) Flush(stream Stream) {
+func (tal *testSingerLogger) Flush(stream Stream) error {
+	return nil
 }
 
 type clientConnectionMock struct {
@@ -102,7 +107,6 @@ type connectSyncClientMock struct {
 }
 
 func (x *connectSyncClientMock) Recv() (*psdbconnect.SyncResponse, error) {
-
 	if x.syncError != nil {
 		return nil, x.syncError
 	}

@@ -4,10 +4,13 @@ import (
 	"context"
 	"fmt"
 
+	psdbconnect "github.com/planetscale/airbyte-source/proto/psdbconnect/v1alpha1"
+	"vitess.io/vitess/go/sqltypes"
+
 	"github.com/pkg/errors"
 )
 
-func Sync(ctx context.Context, mysqlDatabase PlanetScaleEdgeMysqlAccess, edgeDatabase PlanetScaleDatabase, logger Logger, source PlanetScaleSource, catalog Catalog, state *State, indexRows bool) error {
+func Sync(ctx context.Context, mysqlDatabase PlanetScaleEdgeMysqlAccess, edgeDatabase PlanetScaleDatabase, logger Logger, source PlanetScaleSource, catalog Catalog, state *State, indexRows bool, recordWriter RecordWriter) error {
 	// The schema as its stored by Stitch needs to be filtered before it can be synced by the tap.
 	filteredSchema, err := filterSchema(catalog)
 	if err != nil {
@@ -60,15 +63,38 @@ func Sync(ctx context.Context, mysqlDatabase PlanetScaleEdgeMysqlAccess, edgeDat
 		}
 
 		for shard, cursor := range streamShardStates {
-			logger.Info(fmt.Sprintf("syncing rows from stream %q from shard %q", stream.Name, shard))
+
+			logger.Info(fmt.Sprintf("known position is %v", cursor.Cursor))
 			tc, err := cursor.SerializedCursorToTableCursor()
 			if err != nil {
 				return err
 			}
 
-			newCursor, err := edgeDatabase.Read(ctx, source, stream, tc, indexRows, stream.Metadata.GetSelectedProperties())
+			logger.Info(fmt.Sprintf("syncing rows from stream %q from shard %q at position [%v]", stream.Name, shard, tc.Position))
+			if len(tc.Position) > 0 {
+				logger.Info(fmt.Sprintf("stream's known position is %q", tc.Position))
+			}
+
+			onResult := func(sqlResult *sqltypes.Result) error {
+				return printQueryResult(sqlResult, stream, recordWriter)
+			}
+
+			onCursor := func(cursor *psdbconnect.TableCursor) error {
+				sc, err := TableCursorToSerializedCursor(cursor)
+				if err != nil {
+					return err
+				}
+				state.Streams[stream.Name].Shards[shard] = sc
+				return recordWriter.Flush(stream)
+			}
+
+			newCursor, err := edgeDatabase.Read(ctx, source, stream, tc, stream.Metadata.GetSelectedProperties(), onResult, onCursor)
 			if err != nil {
 				return err
+			}
+
+			if err := recordWriter.Flush(stream); err != nil {
+				return errors.Wrap(err, "unable to flush records")
 			}
 
 			if newCursor == nil {
@@ -77,13 +103,39 @@ func Sync(ctx context.Context, mysqlDatabase PlanetScaleEdgeMysqlAccess, edgeDat
 
 			state.Streams[stream.Name].Shards[shard] = newCursor
 
-			if err := logger.State(*state); err != nil {
+			if err := recordWriter.State(*state); err != nil {
 				return errors.Wrap(err, "unable to serialize state")
 			}
 		}
 	}
 
-	return logger.State(*state)
+	return recordWriter.State(*state)
+}
+
+func printQueryResult(qr *sqltypes.Result, s Stream, recordWriter RecordWriter) error {
+	data := QueryResultToRecords(qr)
+	for _, datum := range data {
+		subset := map[string]interface{}{}
+		for _, selectedProperty := range s.Metadata.GetSelectedProperties() {
+			subset[selectedProperty] = datum[selectedProperty]
+			if len(s.Schema.Properties[selectedProperty].CustomFormat) > 0 {
+				if s.Schema.Properties[selectedProperty].CustomFormat == "date-time" {
+					subset[selectedProperty] = getISOTimeStamp(datum[selectedProperty].(sqltypes.Value).ToString())
+				} else {
+					subset[selectedProperty] = datum[selectedProperty].(sqltypes.Value).ToString()
+				}
+			}
+		}
+
+		record := NewRecord()
+		record.Stream = s.Name
+		record.Data = subset
+		if err := recordWriter.Record(record, s); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func generateEmptyState(source PlanetScaleSource, catalog Catalog, shards []string) *State {

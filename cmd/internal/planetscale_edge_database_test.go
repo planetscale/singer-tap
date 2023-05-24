@@ -4,10 +4,11 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"testing"
 	"time"
+
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	psdbconnect "github.com/planetscale/airbyte-source/proto/psdbconnect/v1alpha1"
 	"github.com/stretchr/testify/assert"
@@ -52,7 +53,7 @@ func TestRead_CanPeekBeforeRead(t *testing.T) {
 	cs := Stream{
 		Name: "stream",
 	}
-	sc, err := ped.Read(context.Background(), ps, cs, tc, false, nil)
+	sc, err := ped.Read(context.Background(), ps, cs, tc, nil, nil, nil)
 	assert.NoError(t, err)
 	esc, err := TableCursorToSerializedCursor(tc)
 	assert.NoError(t, err)
@@ -93,7 +94,7 @@ func TestRead_CanEarlyExitIfNoNewVGtidInPeek(t *testing.T) {
 	cs := Stream{
 		Name: "stream",
 	}
-	sc, err := ped.Read(context.Background(), ps, cs, tc, false, nil)
+	sc, err := ped.Read(context.Background(), ps, cs, tc, nil, nil, nil)
 	assert.NoError(t, err)
 	esc, err := TableCursorToSerializedCursor(tc)
 	assert.NoError(t, err)
@@ -135,7 +136,7 @@ func TestRead_CanPickPrimaryForShardedKeyspaces(t *testing.T) {
 	cs := Stream{
 		Name: "stream",
 	}
-	sc, err := ped.Read(context.Background(), ps, cs, tc, false, nil)
+	sc, err := ped.Read(context.Background(), ps, cs, tc, nil, nil, nil)
 	assert.NoError(t, err)
 	esc, err := TableCursorToSerializedCursor(tc)
 	assert.NoError(t, err)
@@ -243,7 +244,7 @@ func TestRead_CanPickPrimaryForUnshardedKeyspaces(t *testing.T) {
 	cs := Stream{
 		Name: "stream",
 	}
-	sc, err := ped.Read(context.Background(), ps, cs, tc, false, nil)
+	sc, err := ped.Read(context.Background(), ps, cs, tc, nil, nil, nil)
 	assert.NoError(t, err)
 	esc, err := TableCursorToSerializedCursor(tc)
 	assert.NoError(t, err)
@@ -287,7 +288,7 @@ func TestRead_CanReturnOriginalCursorIfNoNewFound(t *testing.T) {
 	cs := Stream{
 		Name: "stream",
 	}
-	sc, err := ped.Read(context.Background(), ps, cs, tc, false, nil)
+	sc, err := ped.Read(context.Background(), ps, cs, tc, nil, nil, nil)
 	assert.NoError(t, err)
 	esc, err := TableCursorToSerializedCursor(tc)
 	assert.NoError(t, err)
@@ -335,7 +336,7 @@ func TestRead_CanReturnNewCursorIfNewFound(t *testing.T) {
 	cs := Stream{
 		Name: "stream",
 	}
-	sc, err := ped.Read(context.Background(), ps, cs, tc, false, nil)
+	sc, err := ped.Read(context.Background(), ps, cs, tc, nil, nil, nil)
 	assert.NoError(t, err)
 	esc, err := TableCursorToSerializedCursor(newTC)
 	assert.NoError(t, err)
@@ -416,7 +417,12 @@ func TestRead_CanStopAtWellKnownCursor(t *testing.T) {
 		Name: "customers",
 	}
 
-	sc, err := ped.Read(context.Background(), ps, cs, responses[0].Cursor, false, nil)
+	recordCount := 0
+
+	sc, err := ped.Read(context.Background(), ps, cs, responses[0].Cursor, nil, func(*sqltypes.Result) error {
+		recordCount += 1
+		return nil
+	}, nil)
 	assert.NoError(t, err)
 	// sync should start at the first vgtid
 	esc, err := TableCursorToSerializedCursor(responses[nextVGtidPosition].Cursor)
@@ -426,8 +432,7 @@ func TestRead_CanStopAtWellKnownCursor(t *testing.T) {
 
 	logLines := tal.logMessages
 	assert.Equal(t, "[customers shard : -] Finished reading all rows for table [customers]", logLines[len(logLines)-1])
-	records := tal.records["customers"]
-	assert.Equal(t, 2*(nextVGtidPosition/3), len(records))
+	assert.Equal(t, 2*(nextVGtidPosition/3), recordCount)
 }
 
 func TestRead_CanDetectPurgedBinlogs(t *testing.T) {
@@ -482,7 +487,7 @@ func TestRead_CanDetectPurgedBinlogs(t *testing.T) {
 		Name: "customers",
 	}
 
-	_, err := ped.Read(context.Background(), ps, cs, staleCursor, false, nil)
+	_, err := ped.Read(context.Background(), ps, cs, staleCursor, nil, nil, nil)
 	assert.ErrorContains(t, err, "state for this sync operation [e4e20f06-e28f-11ec-8d20-8e7ac09cb64c:1-0] is stale")
 
 	logLines := tal.logMessages
@@ -491,9 +496,9 @@ func TestRead_CanDetectPurgedBinlogs(t *testing.T) {
 
 func TestRead_CanLogResults(t *testing.T) {
 	tma := getTestMysqlAccess()
-	tal := testSingerLogger{}
+	tal := NewTestLogger()
 	ped := PlanetScaleEdgeDatabase{
-		Logger: &tal,
+		Logger: tal,
 		Mysql:  tma,
 	}
 	tc := &psdbconnect.TableCursor{
@@ -578,13 +583,19 @@ func TestRead_CanLogResults(t *testing.T) {
 			},
 		},
 	}
-	sc, err := ped.Read(context.Background(), ps, cs, tc, false, nil)
-	assert.NoError(t, err)
-	assert.NotNil(t, sc)
-	assert.Equal(t, 2, len(tal.records["products"]))
-	records := tal.records["products"]
+
 	keyboardFound := false
 	monitorFound := false
+	sc, err := ped.Read(context.Background(), ps, cs, tc, nil, func(qr *sqltypes.Result) error {
+		printQueryResult(qr, cs, tal)
+		return nil
+	}, nil)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, sc)
+
+	records := tal.(*testSingerLogger).records["products"]
+
 	for _, r := range records {
 		id, err := r.Data["pid"].(sqltypes.Value).ToInt64()
 		assert.NoError(t, err)

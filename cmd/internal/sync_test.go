@@ -12,7 +12,7 @@ func TestSync_CanFilterSchema(t *testing.T) {
 	tma := getTestMysqlAccess()
 	var streamsRead []string
 	ped := &testPlanetScaleEdgeDatabase{
-		ReadFn: func(ctx context.Context, ps PlanetScaleSource, s Stream, tc *psdbconnect.TableCursor, indexRows bool) (*SerializedCursor, error) {
+		ReadFn: func(ctx context.Context, ps PlanetScaleSource, s Stream, tc *psdbconnect.TableCursor) (*SerializedCursor, error) {
 			streamsRead = append(streamsRead, s.Name)
 			return TableCursorToSerializedCursor(tc)
 		},
@@ -47,7 +47,7 @@ func TestSync_CanFilterSchema(t *testing.T) {
 			},
 		},
 	}
-	err := Sync(context.Background(), tma, ped, logger, source, catalog, nil, false)
+	err := Sync(context.Background(), tma, ped, logger, source, catalog, nil, false, logger)
 	assert.Nil(t, err)
 	assert.Equal(t, []string{"employees"}, streamsRead, "should filter schema down to only selected tables.")
 }
@@ -56,7 +56,7 @@ func TestSync_CanStartFromEmptyState(t *testing.T) {
 	tma := getTestMysqlAccess()
 	var cursor *psdbconnect.TableCursor
 	ped := &testPlanetScaleEdgeDatabase{
-		ReadFn: func(ctx context.Context, ps PlanetScaleSource, s Stream, tc *psdbconnect.TableCursor, indexRows bool) (*SerializedCursor, error) {
+		ReadFn: func(ctx context.Context, ps PlanetScaleSource, s Stream, tc *psdbconnect.TableCursor) (*SerializedCursor, error) {
 			assert.Empty(t, tc.Position, "start position should be empty")
 			cursor = tc
 			cursor.Position = "I-HAVE-MOVED"
@@ -98,7 +98,7 @@ func TestSync_CanStartFromEmptyState(t *testing.T) {
 		},
 	}
 
-	err := Sync(context.Background(), tma, ped, logger, source, catalog, nil, false)
+	err := Sync(context.Background(), tma, ped, logger, source, catalog, nil, false, logger)
 	assert.Nil(t, err)
 	assert.Equal(t, source.Database, cursor.Keyspace)
 	assert.Equal(t, "-", cursor.Shard)
@@ -107,7 +107,7 @@ func TestSync_CanStartFromEmptyState(t *testing.T) {
 func TestSync_PrintsStreamSchema(t *testing.T) {
 	tma := getTestMysqlAccess()
 	ped := &testPlanetScaleEdgeDatabase{
-		ReadFn: func(ctx context.Context, ps PlanetScaleSource, s Stream, tc *psdbconnect.TableCursor, indexRows bool) (*SerializedCursor, error) {
+		ReadFn: func(ctx context.Context, ps PlanetScaleSource, s Stream, tc *psdbconnect.TableCursor) (*SerializedCursor, error) {
 			return TableCursorToSerializedCursor(tc)
 		},
 	}
@@ -157,7 +157,7 @@ func TestSync_PrintsStreamSchema(t *testing.T) {
 		},
 	}
 
-	err := Sync(context.Background(), tma, ped, logger, source, catalog, nil, false)
+	err := Sync(context.Background(), tma, ped, logger, source, catalog, nil, false, logger)
 	assert.Nil(t, err)
 	printedSchema := logger.streamSchemas["employees"]
 	assert.NotNil(t, printedSchema)
@@ -169,7 +169,7 @@ func TestSync_PrintsStreamSchema(t *testing.T) {
 func TestSync_PrintsStreamState(t *testing.T) {
 	tma := getTestMysqlAccess()
 	ped := &testPlanetScaleEdgeDatabase{
-		ReadFn: func(ctx context.Context, ps PlanetScaleSource, s Stream, tc *psdbconnect.TableCursor, indexRows bool) (*SerializedCursor, error) {
+		ReadFn: func(ctx context.Context, ps PlanetScaleSource, s Stream, tc *psdbconnect.TableCursor) (*SerializedCursor, error) {
 			return TableCursorToSerializedCursor(tc)
 		},
 	}
@@ -219,7 +219,7 @@ func TestSync_PrintsStreamState(t *testing.T) {
 		},
 	}
 
-	err := Sync(context.Background(), tma, ped, logger, source, catalog, nil, false)
+	err := Sync(context.Background(), tma, ped, logger, source, catalog, nil, false, logger)
 	assert.Nil(t, err)
 	assert.Len(t, logger.state, 2)
 	lastState := logger.state[1]
@@ -231,7 +231,7 @@ func TestSync_UsesStateIfIncrementalSyncRequested(t *testing.T) {
 	tma := getTestMysqlAccess()
 	var cursor *psdbconnect.TableCursor
 	ped := &testPlanetScaleEdgeDatabase{
-		ReadFn: func(ctx context.Context, ps PlanetScaleSource, s Stream, tc *psdbconnect.TableCursor, indexRows bool) (*SerializedCursor, error) {
+		ReadFn: func(ctx context.Context, ps PlanetScaleSource, s Stream, tc *psdbconnect.TableCursor) (*SerializedCursor, error) {
 			cursor = tc
 			return TableCursorToSerializedCursor(tc)
 		},
@@ -273,7 +273,7 @@ func TestSync_UsesStateIfIncrementalSyncRequested(t *testing.T) {
 		},
 	}
 
-	err = Sync(context.Background(), tma, ped, logger, source, catalog, &lastKnownState, false)
+	err = Sync(context.Background(), tma, ped, logger, source, catalog, &lastKnownState, false, logger)
 	assert.Nil(t, err)
 	assert.Equal(t, source.Database, cursor.Keyspace)
 	assert.Equal(t, "-", cursor.Shard)
@@ -293,7 +293,7 @@ func TestSync_PrintsOldStateIfNoNewStateFound(t *testing.T) {
 
 	assert.Nil(t, err)
 	ped := &testPlanetScaleEdgeDatabase{
-		ReadFn: func(ctx context.Context, ps PlanetScaleSource, s Stream, tc *psdbconnect.TableCursor, indexRows bool) (*SerializedCursor, error) {
+		ReadFn: func(ctx context.Context, ps PlanetScaleSource, s Stream, tc *psdbconnect.TableCursor) (*SerializedCursor, error) {
 			cursor = tc
 			return sc, nil
 		},
@@ -329,7 +329,7 @@ func TestSync_PrintsOldStateIfNoNewStateFound(t *testing.T) {
 		},
 	}
 
-	err = Sync(context.Background(), tma, ped, logger, source, catalog, &lastKnownState, false)
+	err = Sync(context.Background(), tma, ped, logger, source, catalog, &lastKnownState, false, logger)
 	assert.Nil(t, err)
 	assert.Equal(t, source.Database, cursor.Keyspace)
 	assert.Equal(t, "-", cursor.Shard)
@@ -363,7 +363,7 @@ func TestSync_PrintsNewStateIfFound(t *testing.T) {
 	assert.Nil(t, err)
 
 	ped := &testPlanetScaleEdgeDatabase{
-		ReadFn: func(ctx context.Context, ps PlanetScaleSource, s Stream, tc *psdbconnect.TableCursor, indexRows bool) (*SerializedCursor, error) {
+		ReadFn: func(ctx context.Context, ps PlanetScaleSource, s Stream, tc *psdbconnect.TableCursor) (*SerializedCursor, error) {
 			cursor = tc
 			return newSC, nil
 		},
@@ -399,7 +399,7 @@ func TestSync_PrintsNewStateIfFound(t *testing.T) {
 		},
 	}
 
-	err = Sync(context.Background(), tma, ped, logger, source, catalog, &lastKnownState, false)
+	err = Sync(context.Background(), tma, ped, logger, source, catalog, &lastKnownState, false, logger)
 	assert.Nil(t, err)
 	assert.Equal(t, source.Database, cursor.Keyspace)
 	assert.Equal(t, "-", cursor.Shard)
