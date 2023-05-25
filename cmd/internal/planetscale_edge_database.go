@@ -26,13 +26,24 @@ type (
 	OnCursor func(*psdbconnect.TableCursor) error
 )
 
+type ReadParams struct {
+	Source            PlanetScaleSource
+	Table             Stream
+	LastKnownPosition *psdbconnect.TableCursor
+	Columns           []string
+	OnResult          OnResult
+	OnCursor          OnCursor
+	TabletType        psdbconnect.TabletType
+	Cells             []string
+}
+
 var binlogsPurgedMessage = "Cannot replicate because the master purged required binary logs"
 
 // PlanetScaleDatabase is a general purpose interface
 // that defines all the data access methods needed for the PlanetScale Singer Tap to function.
 type PlanetScaleDatabase interface {
 	CanConnect(ctx context.Context, ps PlanetScaleSource) error
-	Read(ctx context.Context, ps PlanetScaleSource, table Stream, lastKnownPosition *psdbconnect.TableCursor, columns []string, onResult OnResult, onCursor OnCursor) (*SerializedCursor, error)
+	Read(ctx context.Context, params ReadParams) (*SerializedCursor, error)
 	Close() error
 }
 
@@ -66,21 +77,22 @@ func (p PlanetScaleEdgeDatabase) Close() error {
 // 3. Ask vstream to stream from the last known vgtid
 // 4. When we reach the stopping point, read all rows available at this vgtid
 // 5. End the stream when (a) a vgtid newer than latest vgtid is encountered or (b) the timeout kicks in.
-func (p PlanetScaleEdgeDatabase) Read(ctx context.Context, ps PlanetScaleSource, table Stream, lastKnownPosition *psdbconnect.TableCursor, columns []string, onResult OnResult, onCursor OnCursor) (*SerializedCursor, error) {
+func (p PlanetScaleEdgeDatabase) Read(ctx context.Context, params ReadParams) (*SerializedCursor, error) {
 	var (
 		err                     error
 		sErr                    error
 		currentSerializedCursor *SerializedCursor
 	)
 
-	tabletType := psdbconnect.TabletType_primary
-	currentPosition := lastKnownPosition
+	currentPosition := params.LastKnownPosition
 
 	readDuration := 90 * time.Second
-	preamble := fmt.Sprintf("[%v shard : %v] ", table.Name, currentPosition.Shard)
+	preamble := fmt.Sprintf("[table: %v, shard : %v, tablet: %v, cells : %v ] ", params.Table.Name, currentPosition.Shard, params.TabletType, params.Cells)
+
 	for {
+
 		p.Logger.Info(preamble + "peeking to see if there's any new rows")
-		latestCursorPosition, lcErr := p.getLatestCursorPosition(ctx, currentPosition.Shard, currentPosition.Keyspace, table, ps, tabletType)
+		latestCursorPosition, lcErr := p.getLatestCursorPosition(ctx, currentPosition.Shard, currentPosition.Keyspace, params.Table, params.Source, params.TabletType, params.Cells)
 		if lcErr != nil {
 			return currentSerializedCursor, errors.Wrap(err, "Unable to get latest cursor position")
 		}
@@ -93,7 +105,7 @@ func (p PlanetScaleEdgeDatabase) Read(ctx context.Context, ps PlanetScaleSource,
 		p.Logger.Info(fmt.Sprintf(preamble+"syncing rows with cursor [%v]", currentPosition))
 		p.Logger.Info(fmt.Sprintf(preamble+"latest database position is [%v]", latestCursorPosition))
 
-		currentPosition, err = p.sync(ctx, currentPosition, latestCursorPosition, table, columns, ps, tabletType, readDuration, onResult, onCursor)
+		currentPosition, err = p.sync(ctx, currentPosition, latestCursorPosition, readDuration, params)
 		if currentPosition.Position != "" {
 			currentSerializedCursor, sErr = TableCursorToSerializedCursor(currentPosition)
 			if sErr != nil {
@@ -105,10 +117,10 @@ func (p PlanetScaleEdgeDatabase) Read(ctx context.Context, ps PlanetScaleSource,
 			if s, ok := status.FromError(err); ok {
 
 				// if the error is unknown, it might be because the binlogs are purged, check for known error message
-				if s.Code() == codes.Unknown && lastKnownPosition != nil {
+				if s.Code() == codes.Unknown && params.LastKnownPosition != nil {
 					if strings.Contains(err.Error(), binlogsPurgedMessage) {
 						p.Logger.Info("Binlogs are purged, state is stale")
-						return currentSerializedCursor, fmt.Errorf("state for this sync operation [%v] is stale, please restart a full sync to get the latest state", lastKnownPosition.Position)
+						return currentSerializedCursor, fmt.Errorf("state for this sync operation [%v] is stale, please restart a full sync to get the latest state", params.LastKnownPosition.Position)
 					}
 				}
 				// if the error is anything other than server timeout, keep going
@@ -119,7 +131,7 @@ func (p PlanetScaleEdgeDatabase) Read(ctx context.Context, ps PlanetScaleSource,
 					p.Logger.Info(preamble + "Continuing with cursor after server timeout")
 				}
 			} else if errors.Is(err, io.EOF) {
-				p.Logger.Info(fmt.Sprintf("%vFinished reading all rows for table [%v]", preamble, table.Name))
+				p.Logger.Info(fmt.Sprintf("%vFinished reading all rows for table [%v]", preamble, params.Table.Name))
 				return currentSerializedCursor, nil
 			} else {
 				p.Logger.Info(fmt.Sprintf("non-grpc error [%v]]", err))
@@ -129,8 +141,8 @@ func (p PlanetScaleEdgeDatabase) Read(ctx context.Context, ps PlanetScaleSource,
 	}
 }
 
-func (p PlanetScaleEdgeDatabase) sync(ctx context.Context, tc *psdbconnect.TableCursor, stopPosition string, s Stream, columns []string, ps PlanetScaleSource, tabletType psdbconnect.TabletType, readDuration time.Duration, onResult OnResult, onCursor OnCursor) (*psdbconnect.TableCursor, error) {
-	defer p.Logger.Flush(s)
+func (p PlanetScaleEdgeDatabase) sync(ctx context.Context, tc *psdbconnect.TableCursor, stopPosition string, readDuration time.Duration, params ReadParams) (*psdbconnect.TableCursor, error) {
+	defer p.Logger.Flush(params.Table)
 	ctx, cancel := context.WithTimeout(ctx, readDuration)
 	defer cancel()
 
@@ -140,12 +152,12 @@ func (p PlanetScaleEdgeDatabase) sync(ctx context.Context, tc *psdbconnect.Table
 	)
 
 	if p.clientFn == nil {
-		conn, err := grpcclient.Dial(ctx, ps.Host,
+		conn, err := grpcclient.Dial(ctx, params.Source.Host,
 			clientoptions.WithDefaultTLSConfig(),
 			clientoptions.WithCompression(true),
 			clientoptions.WithConnectionPool(1),
 			clientoptions.WithExtraCallOption(
-				auth.NewBasicAuth(ps.Username, ps.Password).CallOption(),
+				auth.NewBasicAuth(params.Source.Username, params.Source.Password).CallOption(),
 			),
 		)
 		if err != nil {
@@ -154,22 +166,23 @@ func (p PlanetScaleEdgeDatabase) sync(ctx context.Context, tc *psdbconnect.Table
 		defer conn.Close()
 		client = psdbconnect.NewConnectClient(conn)
 	} else {
-		client, err = p.clientFn(ctx, ps)
+		client, err = p.clientFn(ctx, params.Source)
 		if err != nil {
 			return tc, err
 		}
 	}
 
 	if tc.LastKnownPk != nil {
-		filterFields(tc.LastKnownPk, s)
+		filterFields(tc.LastKnownPk, params.Table)
 		tc.Position = ""
 	}
 
 	sReq := &psdbconnect.SyncRequest{
-		TableName:  s.Name,
+		TableName:  params.Table.Name,
 		Cursor:     tc,
-		TabletType: tabletType,
-		Columns:    columns,
+		TabletType: params.TabletType,
+		Columns:    params.Columns,
+		Cells:      params.Cells,
 	}
 
 	c, err := client.Sync(ctx, sReq)
@@ -205,16 +218,16 @@ func (p PlanetScaleEdgeDatabase) sync(ctx context.Context, tc *psdbconnect.Table
 					Fields: result.Fields,
 				}
 				sqlResult.Rows = append(sqlResult.Rows, row)
-				if onResult != nil {
-					if err := onResult(sqlResult); err != nil {
+				if params.OnResult != nil {
+					if err := params.OnResult(sqlResult); err != nil {
 						return tc, err
 					}
 				}
 			}
 		}
 
-		if onCursor != nil && res.Cursor != nil {
-			onCursor(res.Cursor)
+		if params.OnCursor != nil && res.Cursor != nil {
+			params.OnCursor(res.Cursor)
 		}
 
 		if watchForVgGtidChange && tc.Position != stopPosition {
@@ -249,7 +262,7 @@ func contains(list []string, searchTerm string) bool {
 	return false
 }
 
-func (p PlanetScaleEdgeDatabase) getLatestCursorPosition(ctx context.Context, shard, keyspace string, s Stream, ps PlanetScaleSource, tabletType psdbconnect.TabletType) (string, error) {
+func (p PlanetScaleEdgeDatabase) getLatestCursorPosition(ctx context.Context, shard, keyspace string, s Stream, ps PlanetScaleSource, tabletType psdbconnect.TabletType, cells []string) (string, error) {
 	defer p.Logger.Flush(s)
 	timeout := 45 * time.Second
 	ctx, cancel := context.WithTimeout(ctx, timeout)
@@ -287,6 +300,7 @@ func (p PlanetScaleEdgeDatabase) getLatestCursorPosition(ctx context.Context, sh
 			Keyspace: keyspace,
 			Position: "current",
 		},
+		Cells:      cells,
 		TabletType: tabletType,
 	}
 

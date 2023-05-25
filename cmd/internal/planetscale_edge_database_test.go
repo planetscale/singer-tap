@@ -53,7 +53,11 @@ func TestRead_CanPeekBeforeRead(t *testing.T) {
 	cs := Stream{
 		Name: "stream",
 	}
-	sc, err := ped.Read(context.Background(), ps, cs, tc, nil, nil, nil)
+	sc, err := ped.Read(context.Background(), ReadParams{
+		Source:            ps,
+		Table:             cs,
+		LastKnownPosition: tc,
+	})
 	assert.NoError(t, err)
 	esc, err := TableCursorToSerializedCursor(tc)
 	assert.NoError(t, err)
@@ -94,7 +98,11 @@ func TestRead_CanEarlyExitIfNoNewVGtidInPeek(t *testing.T) {
 	cs := Stream{
 		Name: "stream",
 	}
-	sc, err := ped.Read(context.Background(), ps, cs, tc, nil, nil, nil)
+	sc, err := ped.Read(context.Background(), ReadParams{
+		Source:            ps,
+		Table:             cs,
+		LastKnownPosition: tc,
+	})
 	assert.NoError(t, err)
 	esc, err := TableCursorToSerializedCursor(tc)
 	assert.NoError(t, err)
@@ -136,7 +144,12 @@ func TestRead_CanPickPrimaryForShardedKeyspaces(t *testing.T) {
 	cs := Stream{
 		Name: "stream",
 	}
-	sc, err := ped.Read(context.Background(), ps, cs, tc, nil, nil, nil)
+	sc, err := ped.Read(context.Background(), ReadParams{
+		Source:            ps,
+		Table:             cs,
+		LastKnownPosition: tc,
+		TabletType:        psdbconnect.TabletType_primary,
+	})
 	assert.NoError(t, err)
 	esc, err := TableCursorToSerializedCursor(tc)
 	assert.NoError(t, err)
@@ -244,7 +257,12 @@ func TestRead_CanPickPrimaryForUnshardedKeyspaces(t *testing.T) {
 	cs := Stream{
 		Name: "stream",
 	}
-	sc, err := ped.Read(context.Background(), ps, cs, tc, nil, nil, nil)
+	sc, err := ped.Read(context.Background(), ReadParams{
+		Source:            ps,
+		Table:             cs,
+		LastKnownPosition: tc,
+		TabletType:        psdbconnect.TabletType_primary,
+	})
 	assert.NoError(t, err)
 	esc, err := TableCursorToSerializedCursor(tc)
 	assert.NoError(t, err)
@@ -288,7 +306,12 @@ func TestRead_CanReturnOriginalCursorIfNoNewFound(t *testing.T) {
 	cs := Stream{
 		Name: "stream",
 	}
-	sc, err := ped.Read(context.Background(), ps, cs, tc, nil, nil, nil)
+	sc, err := ped.Read(context.Background(), ReadParams{
+		Source:            ps,
+		Table:             cs,
+		LastKnownPosition: tc,
+		TabletType:        psdbconnect.TabletType_primary,
+	})
 	assert.NoError(t, err)
 	esc, err := TableCursorToSerializedCursor(tc)
 	assert.NoError(t, err)
@@ -336,7 +359,12 @@ func TestRead_CanReturnNewCursorIfNewFound(t *testing.T) {
 	cs := Stream{
 		Name: "stream",
 	}
-	sc, err := ped.Read(context.Background(), ps, cs, tc, nil, nil, nil)
+	sc, err := ped.Read(context.Background(), ReadParams{
+		Source:            ps,
+		Table:             cs,
+		LastKnownPosition: tc,
+		TabletType:        psdbconnect.TabletType_primary,
+	})
 	assert.NoError(t, err)
 	esc, err := TableCursorToSerializedCursor(newTC)
 	assert.NoError(t, err)
@@ -419,10 +447,15 @@ func TestRead_CanStopAtWellKnownCursor(t *testing.T) {
 
 	recordCount := 0
 
-	sc, err := ped.Read(context.Background(), ps, cs, responses[0].Cursor, nil, func(*sqltypes.Result) error {
-		recordCount += 1
-		return nil
-	}, nil)
+	sc, err := ped.Read(context.Background(), ReadParams{
+		Source:            ps,
+		Table:             cs,
+		LastKnownPosition: responses[0].Cursor,
+		TabletType:        psdbconnect.TabletType_primary, OnResult: func(qr *sqltypes.Result) error {
+			recordCount++
+			return nil
+		},
+	})
 	assert.NoError(t, err)
 	// sync should start at the first vgtid
 	esc, err := TableCursorToSerializedCursor(responses[nextVGtidPosition].Cursor)
@@ -431,7 +464,7 @@ func TestRead_CanStopAtWellKnownCursor(t *testing.T) {
 	assert.Equal(t, 2, cc.syncFnInvokedCount)
 
 	logLines := tal.logMessages
-	assert.Equal(t, "[customers shard : -] Finished reading all rows for table [customers]", logLines[len(logLines)-1])
+	assert.Equal(t, "[table: customers, shard : -, tablet: primary, cells : [] ] Finished reading all rows for table [customers]", logLines[len(logLines)-1])
 	assert.Equal(t, 2*(nextVGtidPosition/3), recordCount)
 }
 
@@ -487,14 +520,33 @@ func TestRead_CanDetectPurgedBinlogs(t *testing.T) {
 		Name: "customers",
 	}
 
-	_, err := ped.Read(context.Background(), ps, cs, staleCursor, nil, nil, nil)
+	_, err := ped.Read(context.Background(), ReadParams{
+		Source:            ps,
+		Table:             cs,
+		LastKnownPosition: staleCursor,
+		TabletType:        psdbconnect.TabletType_primary,
+	})
 	assert.ErrorContains(t, err, "state for this sync operation [e4e20f06-e28f-11ec-8d20-8e7ac09cb64c:1-0] is stale")
 
 	logLines := tal.logMessages
 	assert.Equal(t, "Binlogs are purged, state is stale", logLines[len(logLines)-1])
 }
 
-func TestRead_CanLogResults(t *testing.T) {
+func TestRead_CanLogResults_All_Tablets(t *testing.T) {
+	tabletTypes := []psdbconnect.TabletType{
+		psdbconnect.TabletType_primary,
+		psdbconnect.TabletType_read_only,
+		psdbconnect.TabletType_batch,
+		psdbconnect.TabletType_replica,
+	}
+	for _, tabletType := range tabletTypes {
+		t.Run(fmt.Sprintf("tablet_type_%v", tabletType), func(t *testing.T) {
+			testLogRecords(t, tabletType)
+		})
+	}
+}
+
+func testLogRecords(t *testing.T, tabletType psdbconnect.TabletType) {
 	tma := getTestMysqlAccess()
 	tal := NewTestLogger()
 	ped := PlanetScaleEdgeDatabase{
@@ -530,7 +582,7 @@ func TestRead_CanLogResults(t *testing.T) {
 
 	cc := clientConnectionMock{
 		syncFn: func(ctx context.Context, in *psdbconnect.SyncRequest, opts ...grpc.CallOption) (psdbconnect.Connect_SyncClient, error) {
-			assert.Equal(t, psdbconnect.TabletType_primary, in.TabletType)
+			assert.Equal(t, tabletType, in.TabletType)
 			return syncClient, nil
 		},
 	}
@@ -586,10 +638,16 @@ func TestRead_CanLogResults(t *testing.T) {
 
 	keyboardFound := false
 	monitorFound := false
-	sc, err := ped.Read(context.Background(), ps, cs, tc, nil, func(qr *sqltypes.Result) error {
-		printQueryResult(qr, cs, tal)
-		return nil
-	}, nil)
+	sc, err := ped.Read(context.Background(), ReadParams{
+		Source:            ps,
+		Table:             cs,
+		LastKnownPosition: tc,
+		TabletType:        tabletType,
+		OnResult: func(qr *sqltypes.Result) error {
+			printQueryResult(qr, cs, tal)
+			return nil
+		},
+	})
 
 	assert.NoError(t, err)
 	assert.NotNil(t, sc)

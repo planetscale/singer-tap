@@ -6,7 +6,7 @@ require (
 	github.com/go-sql-driver/mysql v1.7.0
 	github.com/hashicorp/go-retryablehttp v0.7.1
 	github.com/pkg/errors v0.9.1
-	github.com/planetscale/airbyte-source v1.16.0
+	github.com/planetscale/airbyte-source v1.17.0
 	github.com/planetscale/psdb v0.0.0-20220429000526-e2a0e798aaf3
 	github.com/stretchr/testify v1.8.2
 	google.golang.org/grpc v1.53.0
