@@ -3,6 +3,7 @@ package internal
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	psdbconnect "github.com/planetscale/airbyte-source/proto/psdbconnect/v1alpha1"
 	"vitess.io/vitess/go/sqltypes"
@@ -19,6 +20,16 @@ func Sync(ctx context.Context, mysqlDatabase PlanetScaleEdgeMysqlAccess, edgeDat
 
 	// get the list of vitess shards so we can generate the empty state for a sync operation.
 	shards, err := mysqlDatabase.GetVitessShards(ctx, source)
+	if err != nil {
+		return err
+	}
+
+	tablets, err := mysqlDatabase.GetVitessTablets(ctx, source)
+	if err != nil {
+		return err
+	}
+
+	cells, err := findSuitableCells(tabletType, tablets)
 	if err != nil {
 		return err
 	}
@@ -96,6 +107,7 @@ func Sync(ctx context.Context, mysqlDatabase PlanetScaleEdgeMysqlAccess, edgeDat
 				OnCursor:          onCursor,
 				OnResult:          onResult,
 				TabletType:        tabletType,
+				Cells:             cells,
 			})
 			if err != nil {
 				return err
@@ -209,4 +221,24 @@ func filterSchema(catalog Catalog) (Catalog, error) {
 
 	}
 	return filteredCatalog, nil
+}
+
+func findSuitableCells(tabletType psdbconnect.TabletType, tablets []VitessTablet) ([]string, error) {
+	s := "PRIMARY"
+	if tabletType == psdbconnect.TabletType_replica {
+		s = "REPLICA"
+	} else if tabletType == psdbconnect.TabletType_read_only {
+		s = "RDONLY"
+	}
+	var cells []string
+	for _, tablet := range tablets {
+		if strings.ToUpper(tablet.TabletType) == s {
+			cells = append(cells, tablet.Cell)
+		}
+	}
+
+	if len(cells) == 0 {
+		return nil, fmt.Errorf("unable to find any suitable tablets of type %q", s)
+	}
+	return cells, nil
 }

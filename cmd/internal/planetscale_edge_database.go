@@ -34,6 +34,7 @@ type ReadParams struct {
 	OnResult          OnResult
 	OnCursor          OnCursor
 	TabletType        psdbconnect.TabletType
+	Cells             []string
 }
 
 var binlogsPurgedMessage = "Cannot replicate because the master purged required binary logs"
@@ -86,12 +87,12 @@ func (p PlanetScaleEdgeDatabase) Read(ctx context.Context, params ReadParams) (*
 	currentPosition := params.LastKnownPosition
 
 	readDuration := 90 * time.Second
-	preamble := fmt.Sprintf("[table: %v, shard : %v, tablet: %v] ", params.Table.Name, currentPosition.Shard, params.TabletType)
+	preamble := fmt.Sprintf("[table: %v, shard : %v, tablet: %v, cells : %v ] ", params.Table.Name, currentPosition.Shard, params.TabletType, params.Cells)
 
 	for {
 
 		p.Logger.Info(preamble + "peeking to see if there's any new rows")
-		latestCursorPosition, lcErr := p.getLatestCursorPosition(ctx, currentPosition.Shard, currentPosition.Keyspace, params.Table, params.Source, params.TabletType)
+		latestCursorPosition, lcErr := p.getLatestCursorPosition(ctx, currentPosition.Shard, currentPosition.Keyspace, params.Table, params.Source, params.TabletType, params.Cells)
 		if lcErr != nil {
 			return currentSerializedCursor, errors.Wrap(err, "Unable to get latest cursor position")
 		}
@@ -181,7 +182,7 @@ func (p PlanetScaleEdgeDatabase) sync(ctx context.Context, tc *psdbconnect.Table
 		Cursor:     tc,
 		TabletType: params.TabletType,
 		Columns:    params.Columns,
-		Cells:      []string{"planetscale_operator_default"},
+		Cells:      params.Cells,
 	}
 
 	c, err := client.Sync(ctx, sReq)
@@ -261,7 +262,7 @@ func contains(list []string, searchTerm string) bool {
 	return false
 }
 
-func (p PlanetScaleEdgeDatabase) getLatestCursorPosition(ctx context.Context, shard, keyspace string, s Stream, ps PlanetScaleSource, tabletType psdbconnect.TabletType) (string, error) {
+func (p PlanetScaleEdgeDatabase) getLatestCursorPosition(ctx context.Context, shard, keyspace string, s Stream, ps PlanetScaleSource, tabletType psdbconnect.TabletType, cells []string) (string, error) {
 	defer p.Logger.Flush(s)
 	timeout := 45 * time.Second
 	ctx, cancel := context.WithTimeout(ctx, timeout)
@@ -299,7 +300,7 @@ func (p PlanetScaleEdgeDatabase) getLatestCursorPosition(ctx context.Context, sh
 			Keyspace: keyspace,
 			Position: "current",
 		},
-		Cells:      []string{"planetscale_operator_default"},
+		Cells:      cells,
 		TabletType: tabletType,
 	}
 
