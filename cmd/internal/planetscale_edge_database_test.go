@@ -148,6 +148,7 @@ func TestRead_CanPickPrimaryForShardedKeyspaces(t *testing.T) {
 		Source:            ps,
 		Table:             cs,
 		LastKnownPosition: tc,
+		TabletType:        psdbconnect.TabletType_primary,
 	})
 	assert.NoError(t, err)
 	esc, err := TableCursorToSerializedCursor(tc)
@@ -260,6 +261,7 @@ func TestRead_CanPickPrimaryForUnshardedKeyspaces(t *testing.T) {
 		Source:            ps,
 		Table:             cs,
 		LastKnownPosition: tc,
+		TabletType:        psdbconnect.TabletType_primary,
 	})
 	assert.NoError(t, err)
 	esc, err := TableCursorToSerializedCursor(tc)
@@ -308,6 +310,7 @@ func TestRead_CanReturnOriginalCursorIfNoNewFound(t *testing.T) {
 		Source:            ps,
 		Table:             cs,
 		LastKnownPosition: tc,
+		TabletType:        psdbconnect.TabletType_primary,
 	})
 	assert.NoError(t, err)
 	esc, err := TableCursorToSerializedCursor(tc)
@@ -529,7 +532,21 @@ func TestRead_CanDetectPurgedBinlogs(t *testing.T) {
 	assert.Equal(t, "Binlogs are purged, state is stale", logLines[len(logLines)-1])
 }
 
-func TestRead_CanLogResults(t *testing.T) {
+func TestRead_CanLogResults_All_Tablets(t *testing.T) {
+	tabletTypes := []psdbconnect.TabletType{
+		psdbconnect.TabletType_primary,
+		psdbconnect.TabletType_read_only,
+		psdbconnect.TabletType_batch,
+		psdbconnect.TabletType_replica,
+	}
+	for _, tabletType := range tabletTypes {
+		t.Run(fmt.Sprintf("tablet_type_%v", tabletType), func(t *testing.T) {
+			testLogRecords(t, tabletType)
+		})
+	}
+}
+
+func testLogRecords(t *testing.T, tabletType psdbconnect.TabletType) {
 	tma := getTestMysqlAccess()
 	tal := NewTestLogger()
 	ped := PlanetScaleEdgeDatabase{
@@ -565,7 +582,7 @@ func TestRead_CanLogResults(t *testing.T) {
 
 	cc := clientConnectionMock{
 		syncFn: func(ctx context.Context, in *psdbconnect.SyncRequest, opts ...grpc.CallOption) (psdbconnect.Connect_SyncClient, error) {
-			assert.Equal(t, psdbconnect.TabletType_primary, in.TabletType)
+			assert.Equal(t, tabletType, in.TabletType)
 			return syncClient, nil
 		},
 	}
@@ -625,7 +642,7 @@ func TestRead_CanLogResults(t *testing.T) {
 		Source:            ps,
 		Table:             cs,
 		LastKnownPosition: tc,
-		TabletType:        psdbconnect.TabletType_primary,
+		TabletType:        tabletType,
 		OnResult: func(qr *sqltypes.Result) error {
 			printQueryResult(qr, cs, tal)
 			return nil
