@@ -10,7 +10,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func Sync(ctx context.Context, mysqlDatabase PlanetScaleEdgeMysqlAccess, edgeDatabase PlanetScaleDatabase, logger Logger, source PlanetScaleSource, catalog Catalog, state *State, indexRows bool, recordWriter RecordWriter) error {
+func Sync(ctx context.Context, mysqlDatabase PlanetScaleEdgeMysqlAccess, edgeDatabase PlanetScaleDatabase, logger Logger, source PlanetScaleSource, catalog Catalog, state *State, recordWriter RecordWriter, tabletType psdbconnect.TabletType) error {
 	// The schema as its stored by Stitch needs to be filtered before it can be synced by the tap.
 	filteredSchema, err := filterSchema(catalog)
 	if err != nil {
@@ -88,7 +88,15 @@ func Sync(ctx context.Context, mysqlDatabase PlanetScaleEdgeMysqlAccess, edgeDat
 				return recordWriter.Flush(stream)
 			}
 
-			newCursor, err := edgeDatabase.Read(ctx, source, stream, tc, stream.Metadata.GetSelectedProperties(), onResult, onCursor)
+			newCursor, err := edgeDatabase.Read(ctx, ReadParams{
+				Source:            source,
+				Table:             stream,
+				LastKnownPosition: tc,
+				Columns:           stream.Metadata.GetSelectedProperties(),
+				OnCursor:          onCursor,
+				OnResult:          onResult,
+				TabletType:        tabletType,
+			})
 			if err != nil {
 				return err
 			}

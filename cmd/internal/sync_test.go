@@ -47,7 +47,7 @@ func TestSync_CanFilterSchema(t *testing.T) {
 			},
 		},
 	}
-	err := Sync(context.Background(), tma, ped, logger, source, catalog, nil, false, logger)
+	err := Sync(context.Background(), tma, ped, logger, source, catalog, nil, logger, 0)
 	assert.Nil(t, err)
 	assert.Equal(t, []string{"employees"}, streamsRead, "should filter schema down to only selected tables.")
 }
@@ -98,7 +98,7 @@ func TestSync_CanStartFromEmptyState(t *testing.T) {
 		},
 	}
 
-	err := Sync(context.Background(), tma, ped, logger, source, catalog, nil, false, logger)
+	err := Sync(context.Background(), tma, ped, logger, source, catalog, nil, logger, 0)
 	assert.Nil(t, err)
 	assert.Equal(t, source.Database, cursor.Keyspace)
 	assert.Equal(t, "-", cursor.Shard)
@@ -157,7 +157,7 @@ func TestSync_PrintsStreamSchema(t *testing.T) {
 		},
 	}
 
-	err := Sync(context.Background(), tma, ped, logger, source, catalog, nil, false, logger)
+	err := Sync(context.Background(), tma, ped, logger, source, catalog, nil, logger, 0)
 	assert.Nil(t, err)
 	printedSchema := logger.streamSchemas["employees"]
 	assert.NotNil(t, printedSchema)
@@ -219,7 +219,7 @@ func TestSync_PrintsStreamState(t *testing.T) {
 		},
 	}
 
-	err := Sync(context.Background(), tma, ped, logger, source, catalog, nil, false, logger)
+	err := Sync(context.Background(), tma, ped, logger, source, catalog, nil, logger, 0)
 	assert.Nil(t, err)
 	assert.Len(t, logger.state, 2)
 	lastState := logger.state[1]
@@ -273,7 +273,7 @@ func TestSync_UsesStateIfIncrementalSyncRequested(t *testing.T) {
 		},
 	}
 
-	err = Sync(context.Background(), tma, ped, logger, source, catalog, &lastKnownState, false, logger)
+	err = Sync(context.Background(), tma, ped, logger, source, catalog, &lastKnownState, logger, 0)
 	assert.Nil(t, err)
 	assert.Equal(t, source.Database, cursor.Keyspace)
 	assert.Equal(t, "-", cursor.Shard)
@@ -329,7 +329,7 @@ func TestSync_PrintsOldStateIfNoNewStateFound(t *testing.T) {
 		},
 	}
 
-	err = Sync(context.Background(), tma, ped, logger, source, catalog, &lastKnownState, false, logger)
+	err = Sync(context.Background(), tma, ped, logger, source, catalog, &lastKnownState, logger, 0)
 	assert.Nil(t, err)
 	assert.Equal(t, source.Database, cursor.Keyspace)
 	assert.Equal(t, "-", cursor.Shard)
@@ -399,7 +399,7 @@ func TestSync_PrintsNewStateIfFound(t *testing.T) {
 		},
 	}
 
-	err = Sync(context.Background(), tma, ped, logger, source, catalog, &lastKnownState, false, logger)
+	err = Sync(context.Background(), tma, ped, logger, source, catalog, &lastKnownState, logger, 0)
 	assert.Nil(t, err)
 	assert.Equal(t, source.Database, cursor.Keyspace)
 	assert.Equal(t, "-", cursor.Shard)
