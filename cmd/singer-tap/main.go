@@ -25,6 +25,7 @@ var (
 	autoSelect         bool
 	useIncrementalSync bool
 	useReplica         bool
+	useReadOnly        bool
 	excludedTables     string
 	singerAPIURL       string
 	batchSize          int
@@ -40,7 +41,8 @@ func init() {
 	flag.BoolVar(&autoSelect, "auto-select", false, "(discover mode only) select all tables & columns in the schema")
 	flag.BoolVar(&useIncrementalSync, "incremental", true, "(discover mode only) all tables & views will be synced incrementally")
 	flag.StringVar(&excludedTables, "excluded-tables", "", "(discover mode only) comma separated list of tables & views to exclude.")
-	flag.BoolVar(&useReplica, "use-replica", false, "(sync mode only) use a replica to stream rows from PlanetScale")
+	flag.BoolVar(&useReplica, "use-replica", false, "(sync mode only) use a replica tablet to stream rows from PlanetScale")
+	flag.BoolVar(&useReadOnly, "use-rdonly", false, "(sync mode only) use a readonly tablet to stream rows from PlanetScale")
 
 	// variables for http commit mode
 	flag.BoolVar(&commitMode, "commit", false, "(sync mode only) Run this tap in commit mode, sends rows to Stitch Import API")
@@ -70,14 +72,27 @@ func main() {
 		recordWriter = logger
 	}
 	logger.Info(fmt.Sprintf("PlanetScale Singer Tap : version [%q], commit [%q], published on [%q]", version, commit, date))
-	err := execute(discoverMode, logger, configFilePath, catalogFilePath, stateFilePath, recordWriter, useReplica)
+	if useReplica && useReadOnly {
+		fmt.Println("Only one of use-replica, use-rdonly can be specified, please pick one of these two modes and try again")
+		os.Exit(1)
+	}
+	var tabletType psdbconnect.TabletType
+	if useReplica {
+		tabletType = psdbconnect.TabletType_replica
+	} else if useReadOnly {
+		tabletType = psdbconnect.TabletType_read_only
+	} else {
+		tabletType = psdbconnect.TabletType_primary
+	}
+
+	err := execute(discoverMode, logger, configFilePath, catalogFilePath, stateFilePath, recordWriter, tabletType)
 	if err != nil {
 		logger.Error(err.Error())
 		os.Exit(1)
 	}
 }
 
-func execute(discoverMode bool, logger internal.Logger, configFilePath, catalogFilePath, stateFilePath string, recordWriter internal.RecordWriter, useReplica bool) error {
+func execute(discoverMode bool, logger internal.Logger, configFilePath, catalogFilePath, stateFilePath string, recordWriter internal.RecordWriter, tabletType psdbconnect.TabletType) error {
 	var (
 		sourceConfig internal.PlanetScaleSource
 		catalog      internal.Catalog
@@ -124,10 +139,10 @@ func execute(discoverMode bool, logger internal.Logger, configFilePath, catalogF
 		}
 	}
 
-	return sync(context.Background(), logger, sourceConfig, catalog, state, recordWriter, useReplica)
+	return sync(context.Background(), logger, sourceConfig, catalog, state, recordWriter, tabletType)
 }
 
-func sync(ctx context.Context, logger internal.Logger, source internal.PlanetScaleSource, catalog internal.Catalog, state *internal.State, recordWriter internal.RecordWriter, useReplica bool) error {
+func sync(ctx context.Context, logger internal.Logger, source internal.PlanetScaleSource, catalog internal.Catalog, state *internal.State, recordWriter internal.RecordWriter, tabletType psdbconnect.TabletType) error {
 	logger.Info(fmt.Sprintf("Syncing records for PlanetScale database : %v", source.Database))
 	mysql, err := internal.NewMySQL(&source)
 	if err != nil {
@@ -136,10 +151,6 @@ func sync(ctx context.Context, logger internal.Logger, source internal.PlanetSca
 	defer mysql.Close()
 	ped := internal.NewEdge(mysql, logger)
 
-	tabletType := psdbconnect.TabletType_primary
-	if useReplica {
-		tabletType = psdbconnect.TabletType_replica
-	}
 	return internal.Sync(ctx, mysql, ped, logger, source, catalog, state, recordWriter, tabletType)
 }
 
