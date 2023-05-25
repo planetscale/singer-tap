@@ -86,8 +86,10 @@ func (p PlanetScaleEdgeDatabase) Read(ctx context.Context, params ReadParams) (*
 	currentPosition := params.LastKnownPosition
 
 	readDuration := 90 * time.Second
-	preamble := fmt.Sprintf("[%v shard : %v] ", params.Table.Name, currentPosition.Shard)
+	preamble := fmt.Sprintf("[table: %v, shard : %v, tablet: %v] ", params.Table.Name, currentPosition.Shard, params.TabletType)
+
 	for {
+
 		p.Logger.Info(preamble + "peeking to see if there's any new rows")
 		latestCursorPosition, lcErr := p.getLatestCursorPosition(ctx, currentPosition.Shard, currentPosition.Keyspace, params.Table, params.Source, params.TabletType)
 		if lcErr != nil {
@@ -179,6 +181,7 @@ func (p PlanetScaleEdgeDatabase) sync(ctx context.Context, tc *psdbconnect.Table
 		Cursor:     tc,
 		TabletType: params.TabletType,
 		Columns:    params.Columns,
+		Cells:      []string{"planetscale_operator_default"},
 	}
 
 	c, err := client.Sync(ctx, sReq)
@@ -296,6 +299,7 @@ func (p PlanetScaleEdgeDatabase) getLatestCursorPosition(ctx context.Context, sh
 			Keyspace: keyspace,
 			Position: "current",
 		},
+		Cells:      []string{"planetscale_operator_default"},
 		TabletType: tabletType,
 	}
 
