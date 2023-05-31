@@ -42,11 +42,19 @@ func Sync(ctx context.Context, mysqlDatabase PlanetScaleEdgeMysqlAccess, edgeDat
 		return errors.New("unable to generate empty state")
 	}
 
-	// if there is no last known state, start from the beginning.
-	if state == nil || len(state.Streams) == 0 {
+	// if there is existing state, ensure that all selected tables
+	// have valid state.
+	if state != nil && len(state.Streams) > 0 {
+		// copy over empty state for all tables that aren't in the existing state.
+		for key, value := range beginningState.Streams {
+			if _, ok := state.Streams[key]; !ok {
+				state.Streams[key] = value
+			}
+		}
+	} else {
+		// if there is no last known state, start from the beginning.
 		state = beginningState
 	}
-
 	// For every stream processed by this loop, across all selected shards, we output the following messages
 	// ONE message of type SCHEMA with the schema of the stream that is being synced.
 	// MANY messages of type RECORD, one per row in the database for this stream.
