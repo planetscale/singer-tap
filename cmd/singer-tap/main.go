@@ -14,23 +14,24 @@ import (
 )
 
 var (
-	version            string
-	commit             string
-	date               string
-	discoverMode       bool
-	commitMode         bool
-	catalogFilePath    string
-	configFilePath     string
-	stateFilePath      string
-	autoSelect         bool
-	useIncrementalSync bool
-	useReplica         bool
-	useReadOnly        bool
-	excludedTables     string
-	singerAPIURL       string
-	batchSize          int
-	apiToken           string
-	stateDirectory     string
+	version               string
+	commit                string
+	date                  string
+	discoverMode          bool
+	commitMode            bool
+	catalogFilePath       string
+	configFilePath        string
+	stateFilePath         string
+	autoSelect            bool
+	useIncrementalSync    bool
+	treatTinyIntAsBoolean bool
+	useReplica            bool
+	useReadOnly           bool
+	excludedTables        string
+	singerAPIURL          string
+	batchSize             int
+	apiToken              string
+	stateDirectory        string
 )
 
 func init() {
@@ -39,6 +40,7 @@ func init() {
 	flag.StringVar(&catalogFilePath, "catalog", "", "(sync mode only) path to a catalog file for this tap")
 	flag.StringVar(&stateFilePath, "state", "", "(sync mode only) path to state file for this configuration")
 	flag.BoolVar(&autoSelect, "auto-select", false, "(discover mode only) select all tables & columns in the schema")
+	flag.BoolVar(&treatTinyIntAsBoolean, "tinyint-as-boolean", false, "(discover mode only) if true, tinyint(1) will be represented as booleans")
 	flag.BoolVar(&useIncrementalSync, "incremental", true, "(discover mode only) all tables & views will be synced incrementally")
 	flag.StringVar(&excludedTables, "excluded-tables", "", "(discover mode only) comma separated list of tables & views to exclude.")
 	flag.BoolVar(&useReplica, "use-replica", false, "(sync mode only) use a replica tablet to stream rows from PlanetScale")
@@ -112,8 +114,9 @@ func execute(discoverMode bool, logger internal.Logger, configFilePath, catalogF
 	if discoverMode {
 		logger.Info("running in discovery mode")
 		settings := internal.DiscoverSettings{
-			AutoSelectTables:   autoSelect,
-			UseIncrementalSync: useIncrementalSync,
+			AutoSelectTables:      autoSelect,
+			UseIncrementalSync:    useIncrementalSync,
+			TreatTinyIntAsBoolean: treatTinyIntAsBoolean,
 		}
 
 		if len(excludedTables) > 0 {

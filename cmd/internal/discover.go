@@ -9,9 +9,10 @@ import (
 )
 
 type DiscoverSettings struct {
-	AutoSelectTables   bool
-	ExcludedTables     []string
-	UseIncrementalSync bool
+	AutoSelectTables      bool
+	ExcludedTables        []string
+	UseIncrementalSync    bool
+	TreatTinyIntAsBoolean bool
 }
 
 func Discover(ctx context.Context, source PlanetScaleSource, mysql PlanetScaleEdgeMysqlAccess, settings DiscoverSettings) (Catalog, error) {
@@ -38,7 +39,7 @@ func Discover(ctx context.Context, source PlanetScaleSource, mysql PlanetScaleEd
 			TableName: name,
 		}
 
-		tableSchema, err := mysql.GetTableSchema(ctx, source, name)
+		tableSchema, err := mysql.GetTableSchema(ctx, source, name, settings.TreatTinyIntAsBoolean)
 		if err != nil {
 			return c, errors.Wrapf(err, "unable to retrieve schema for table : %v , failed with : %q", name, err)
 		}
