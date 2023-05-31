@@ -7,9 +7,10 @@ before:
 builds:
   - id: ps-singer-tap
     env:
-      - CGO_ENABLED=1
+      - CGO_ENABLED=0
     goos:
       - darwin
+      - linux
       - windows
     goarch:
       - 386
@@ -27,6 +28,7 @@ builds:
       - CGO_ENABLED=0
     goos:
       - darwin
+      - linux
       - windows
     goarch:
       - 386
