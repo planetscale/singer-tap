@@ -281,6 +281,74 @@ func TestSync_UsesStateIfIncrementalSyncRequested(t *testing.T) {
 	assert.Equal(t, `Stream "employees" will be synced incrementally`, logger.logMessages[0])
 }
 
+func TestSync_UseOrCreateState(t *testing.T) {
+	tma := getTestMysqlAccess()
+	var cursor *psdbconnect.TableCursor
+	ped := &testPlanetScaleEdgeDatabase{
+		ReadFn: func(ctx context.Context, ps PlanetScaleSource, s Stream, tc *psdbconnect.TableCursor) (*SerializedCursor, error) {
+			if s.Name == "employees" {
+				cursor = tc
+			}
+			return TableCursorToSerializedCursor(tc)
+		},
+	}
+	logger := &testSingerLogger{}
+	sc, err := TableCursorToSerializedCursor(&psdbconnect.TableCursor{
+		Shard:    "-",
+		Keyspace: "sync-test",
+		Position: "i-know-what-you-synced-last-summer",
+	})
+	assert.Nil(t, err)
+	lastKnownState := State{
+		Streams: map[string]ShardStates{
+			"employees": {
+				Shards: map[string]*SerializedCursor{
+					"-": sc,
+				},
+			},
+		},
+	}
+	source := PlanetScaleSource{
+		Database: "sync-test",
+	}
+	catalog := Catalog{
+		Streams: []Stream{
+			{
+				Name:      "employees",
+				TableName: "employees",
+				Metadata: MetadataCollection{
+					{
+						Metadata: NodeMetadata{
+							Selected:          true,
+							ReplicationMethod: "INCREMENTAL",
+							BreadCrumb:        []string{},
+						},
+					},
+				},
+			},
+			{
+				Name:      "customers",
+				TableName: "customers",
+				Metadata: MetadataCollection{
+					{
+						Metadata: NodeMetadata{
+							Selected:   true,
+							BreadCrumb: []string{},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	err = Sync(context.Background(), tma, ped, logger, source, catalog, &lastKnownState, logger, 0)
+	assert.Nil(t, err)
+	assert.Equal(t, source.Database, cursor.Keyspace)
+	assert.Equal(t, "-", cursor.Shard)
+	assert.Equal(t, "i-know-what-you-synced-last-summer", cursor.Position)
+	assert.Equal(t, `Stream "employees" will be synced incrementally`, logger.logMessages[0])
+}
+
 func TestSync_PrintsOldStateIfNoNewStateFound(t *testing.T) {
 	tma := getTestMysqlAccess()
 	var cursor *psdbconnect.TableCursor
