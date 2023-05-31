@@ -161,9 +161,10 @@ func TestRead_CanPickPrimaryForShardedKeyspaces(t *testing.T) {
 
 func TestDiscover_CanPickRightSingerType(t *testing.T) {
 	tests := []struct {
-		MysqlType      string
-		JSONSchemaType string
-		SingerType     string
+		MysqlType             string
+		JSONSchemaType        string
+		SingerType            string
+		TreatTinyIntAsBoolean bool
 	}{
 		{
 			MysqlType:      "int(32)",
@@ -171,9 +172,16 @@ func TestDiscover_CanPickRightSingerType(t *testing.T) {
 			SingerType:     "",
 		},
 		{
-			MysqlType:      "tinyint(1)",
-			JSONSchemaType: "boolean",
-			SingerType:     "",
+			MysqlType:             "tinyint(1)",
+			JSONSchemaType:        "boolean",
+			SingerType:            "",
+			TreatTinyIntAsBoolean: true,
+		},
+		{
+			MysqlType:             "tinyint(1)",
+			JSONSchemaType:        "integer",
+			SingerType:            "",
+			TreatTinyIntAsBoolean: false,
 		},
 		{
 			MysqlType:      "bigint(16)",
@@ -214,7 +222,7 @@ func TestDiscover_CanPickRightSingerType(t *testing.T) {
 
 	for _, typeTest := range tests {
 		t.Run(fmt.Sprintf("mysql_type_%v", typeTest.MysqlType), func(t *testing.T) {
-			p := getJsonSchemaType(typeTest.MysqlType)
+			p := getJsonSchemaType(typeTest.MysqlType, typeTest.TreatTinyIntAsBoolean)
 			assert.Equal(t, typeTest.SingerType, p.CustomFormat, "wrong custom format")
 			assert.Equal(t, typeTest.JSONSchemaType, p.Types[1], "wrong jsonschema type")
 		})

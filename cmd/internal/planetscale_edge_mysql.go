@@ -25,7 +25,7 @@ type VitessTablet struct {
 type PlanetScaleEdgeMysqlAccess interface {
 	PingContext(context.Context, PlanetScaleSource) error
 	GetTableNames(context.Context, PlanetScaleSource) ([]string, error)
-	GetTableSchema(context.Context, PlanetScaleSource, string) (map[string]StreamProperty, error)
+	GetTableSchema(context.Context, PlanetScaleSource, string, bool) (map[string]StreamProperty, error)
 	GetTablePrimaryKeys(context.Context, PlanetScaleSource, string) ([]string, error)
 	GetVitessShards(ctx context.Context, psc PlanetScaleSource) ([]string, error)
 	GetVitessTablets(ctx context.Context, psc PlanetScaleSource) ([]VitessTablet, error)
@@ -135,7 +135,7 @@ func (p planetScaleEdgeMySQLAccess) GetTableNames(ctx context.Context, psc Plane
 	return tables, nil
 }
 
-func (p planetScaleEdgeMySQLAccess) GetTableSchema(ctx context.Context, psc PlanetScaleSource, tableName string) (map[string]StreamProperty, error) {
+func (p planetScaleEdgeMySQLAccess) GetTableSchema(ctx context.Context, psc PlanetScaleSource, tableName string, treatTinyIntAsBoolean bool) (map[string]StreamProperty, error) {
 	properties := map[string]StreamProperty{}
 
 	columnNamesQR, err := p.db.QueryContext(
@@ -156,7 +156,7 @@ func (p planetScaleEdgeMySQLAccess) GetTableSchema(ctx context.Context, psc Plan
 			return properties, errors.Wrapf(err, "Unable to scan row for column names & types of table %v", tableName)
 		}
 
-		properties[name] = getJsonSchemaType(columnType)
+		properties[name] = getJsonSchemaType(columnType, treatTinyIntAsBoolean)
 	}
 
 	if err := columnNamesQR.Err(); err != nil {
@@ -195,7 +195,7 @@ func (p planetScaleEdgeMySQLAccess) GetTablePrimaryKeys(ctx context.Context, psc
 }
 
 // Convert columnType to Singer type.
-func getJsonSchemaType(mysqlType string) StreamProperty {
+func getJsonSchemaType(mysqlType string, treatTinyIntAsBoolean bool) StreamProperty {
 	if strings.HasPrefix(mysqlType, "int") {
 		return StreamProperty{Types: []string{
 			"null",
@@ -220,7 +220,12 @@ func getJsonSchemaType(mysqlType string) StreamProperty {
 
 	switch mysqlType {
 	case "tinyint(1)":
-		return StreamProperty{Types: []string{"null", "boolean"}}
+		if treatTinyIntAsBoolean {
+			return StreamProperty{Types: []string{"null", "boolean"}}
+		}
+
+		return StreamProperty{Types: []string{"null", "integer"}}
+
 	case "double":
 		return StreamProperty{Types: []string{"null", "number"}}
 	case "date":

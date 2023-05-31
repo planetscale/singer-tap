@@ -149,7 +149,7 @@ func (tma *mysqlAccessMock) GetTableNames(ctx context.Context, source PlanetScal
 	return tma.GetTableNamesFn(ctx, source)
 }
 
-func (tma *mysqlAccessMock) GetTableSchema(ctx context.Context, source PlanetScaleSource, s string) (map[string]StreamProperty, error) {
+func (tma *mysqlAccessMock) GetTableSchema(ctx context.Context, source PlanetScaleSource, s string, b bool) (map[string]StreamProperty, error) {
 	tma.GetTableSchemaFnInvoked = true
 	return tma.GetTableSchemaFn(ctx, source, s)
 }
