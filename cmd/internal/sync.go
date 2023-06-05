@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	psdbconnect "github.com/planetscale/airbyte-source/proto/psdbconnect/v1alpha1"
+
 	"vitess.io/vitess/go/sqltypes"
 
 	"github.com/pkg/errors"
@@ -82,8 +83,6 @@ func Sync(ctx context.Context, mysqlDatabase PlanetScaleEdgeMysqlAccess, edgeDat
 		}
 
 		for shard, cursor := range streamShardStates {
-
-			logger.Info(fmt.Sprintf("known position is %v", cursor.Cursor))
 			tc, err := cursor.SerializedCursorToTableCursor()
 			if err != nil {
 				return err
@@ -94,7 +93,9 @@ func Sync(ctx context.Context, mysqlDatabase PlanetScaleEdgeMysqlAccess, edgeDat
 				logger.Info(fmt.Sprintf("stream's known position is %q", tc.Position))
 			}
 
+			needsFlush := true
 			onResult := func(sqlResult *sqltypes.Result) error {
+				needsFlush = true
 				return printQueryResult(sqlResult, stream, recordWriter)
 			}
 
@@ -104,7 +105,12 @@ func Sync(ctx context.Context, mysqlDatabase PlanetScaleEdgeMysqlAccess, edgeDat
 					return err
 				}
 				state.Streams[stream.Name].Shards[shard] = sc
-				return recordWriter.Flush(stream)
+
+				if needsFlush {
+					return recordWriter.Flush(stream)
+				}
+
+				return nil
 			}
 
 			newCursor, err := edgeDatabase.Read(ctx, ReadParams{
@@ -145,14 +151,13 @@ func printQueryResult(qr *sqltypes.Result, s Stream, recordWriter RecordWriter) 
 	for _, datum := range data {
 		subset := map[string]interface{}{}
 		for _, selectedProperty := range s.Metadata.GetSelectedProperties() {
+			streamProperty := s.Schema.Properties[selectedProperty]
 			subset[selectedProperty] = datum[selectedProperty]
-			if len(s.Schema.Properties[selectedProperty].CustomFormat) > 0 {
-				if s.Schema.Properties[selectedProperty].CustomFormat == "date-time" {
-					subset[selectedProperty] = getISOTimeStamp(datum[selectedProperty].(sqltypes.Value).ToString())
-				} else {
-					subset[selectedProperty] = datum[selectedProperty].(sqltypes.Value).ToString()
-				}
+			val, err := Convert(streamProperty, datum[selectedProperty].(sqltypes.Value))
+			if err != nil {
+				return errors.Wrapf(err, "unable to serialize [%v] as [%v]", datum[selectedProperty], s.Schema.Properties[selectedProperty].Types)
 			}
+			subset[selectedProperty] = val
 		}
 
 		record := NewRecord()

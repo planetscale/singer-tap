@@ -204,11 +204,11 @@ func getJsonSchemaType(mysqlType string, treatTinyIntAsBoolean bool) StreamPrope
 	}
 
 	if strings.HasPrefix(mysqlType, "bigint") {
-		return StreamProperty{Types: []string{"null", "string"}, CustomFormat: "big_integer"}
+		return StreamProperty{Types: []string{"null", "number"}}
 	}
 
 	if strings.HasPrefix(mysqlType, "datetime") {
-		return StreamProperty{Types: []string{"null", "string"}, CustomFormat: "timestamp_with_timezone"}
+		return StreamProperty{Types: []string{"null", "string"}, CustomFormat: "date-time"}
 	}
 
 	if strings.HasSuffix(mysqlType, "int") {

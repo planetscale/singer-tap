@@ -2,10 +2,12 @@ package internal
 
 import (
 	"encoding/base64"
+	"strings"
 
 	"github.com/pkg/errors"
 	psdbconnect "github.com/planetscale/airbyte-source/proto/psdbconnect/v1alpha1"
 	"github.com/planetscale/psdb/core/codec"
+
 	"vitess.io/vitess/go/sqltypes"
 )
 
@@ -124,6 +126,31 @@ type StreamSchema struct {
 type StreamProperty struct {
 	Types        []string `json:"type"`
 	CustomFormat string   `json:"format,omitempty"`
+}
+
+func (s StreamProperty) IsBoolean() bool {
+	return s.hasType("boolean")
+}
+
+func (s StreamProperty) IsNumber() bool {
+	return s.hasType("number")
+}
+
+func (s StreamProperty) IsInteger() bool {
+	return s.hasType("integer")
+}
+
+func (s StreamProperty) hasType(typeName string) bool {
+	for _, t := range s.Types {
+		if strings.EqualFold(t, typeName) {
+			return true
+		}
+	}
+	return false
+}
+
+func (s StreamProperty) IsDateTime() bool {
+	return s.CustomFormat == "date-time"
 }
 
 type (

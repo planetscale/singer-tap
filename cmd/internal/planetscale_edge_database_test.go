@@ -185,23 +185,20 @@ func TestDiscover_CanPickRightSingerType(t *testing.T) {
 		},
 		{
 			MysqlType:      "bigint(16)",
-			JSONSchemaType: "string",
-			SingerType:     "big_integer",
+			JSONSchemaType: "number",
 		},
 		{
 			MysqlType:      "bigint unsigned",
-			JSONSchemaType: "string",
-			SingerType:     "big_integer",
+			JSONSchemaType: "number",
 		},
 		{
 			MysqlType:      "bigint zerofill",
-			JSONSchemaType: "string",
-			SingerType:     "big_integer",
+			JSONSchemaType: "number",
 		},
 		{
 			MysqlType:      "datetime",
 			JSONSchemaType: "string",
-			SingerType:     "timestamp_with_timezone",
+			SingerType:     "date-time",
 		},
 		{
 			MysqlType:      "date",
@@ -663,8 +660,8 @@ func testLogRecords(t *testing.T, tabletType psdbconnect.TabletType) {
 	records := tal.(*testSingerLogger).records["products"]
 
 	for _, r := range records {
-		id, err := r.Data["pid"].(sqltypes.Value).ToInt64()
-		assert.NoError(t, err)
+		id, ok := r.Data["pid"].(int64)
+		assert.True(t, ok, "pid should be int64")
 
 		_, err = time.Parse(time.RFC3339, r.Data["timestamp"].(string))
 		assert.NoError(t, err, "should print timestamp as ISO 8601/RFC3339 values")
@@ -672,13 +669,13 @@ func testLogRecords(t *testing.T, tabletType psdbconnect.TabletType) {
 		if id == 1 {
 			assert.False(t, keyboardFound, "should not find keyboard twice")
 			keyboardFound = true
-			assert.Equal(t, "keyboard", r.Data["description"].(sqltypes.Value).ToString())
+			assert.Equal(t, "keyboard", r.Data["description"])
 		}
 
 		if id == 2 {
 			assert.False(t, monitorFound, "should not find monitor twice")
 			monitorFound = true
-			assert.Equal(t, "monitor", r.Data["description"].(sqltypes.Value).ToString())
+			assert.Equal(t, "monitor", r.Data["description"])
 		}
 	}
 	assert.True(t, keyboardFound)
