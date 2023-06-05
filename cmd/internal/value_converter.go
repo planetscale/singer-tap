@@ -19,22 +19,21 @@ func Convert(s StreamProperty, value sqltypes.Value) (interface{}, error) {
 		return f, nil
 	}
 
+	// a nil by any other name, is still a nil.
+	if value.IsNull() {
+		return nil, nil
+	}
+
 	// after this, depend on the JSONSchema type to serialize the value.
 	if s.IsDateTime() {
 		return getISOTimeStamp(value), nil
 	} else if s.IsInteger() || s.IsNumber() {
-		if value.IsNull() {
-			return nil, nil
-		}
 		i, err := value.ToInt64()
 		if err != nil {
 			return nil, err
 		}
 		return i, nil
 	} else if s.IsBoolean() {
-		if value.IsNull() {
-			return nil, nil
-		}
 		b, err := value.ToBool()
 		if err != nil {
 			return nil, err
