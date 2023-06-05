@@ -320,11 +320,3 @@ func (p PlanetScaleEdgeDatabase) getLatestCursorPosition(ctx context.Context, sh
 		}
 	}
 }
-
-func getISOTimeStamp(value string) string {
-	p, err := time.Parse("2006-01-02 15:04:05", value)
-	if err != nil {
-		return ""
-	}
-	return p.Format(time.RFC3339)
-}
