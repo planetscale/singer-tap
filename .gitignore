@@ -2,3 +2,4 @@ sources/*
 state/*
 dist/*
 bin/*
+.idea

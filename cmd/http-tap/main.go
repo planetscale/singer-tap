@@ -6,7 +6,6 @@ import (
 	"flag"
 	"fmt"
 	"io/fs"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"time"
@@ -143,7 +142,7 @@ func saveState(logger internal.Logger, input string, path string) error {
 	statePath := filepath.Join(path, fmt.Sprintf("state-%v.json", now.UnixMilli()))
 	logger.Info(fmt.Sprintf("saving state to path : %v", statePath))
 
-	if err := ioutil.WriteFile(statePath, stateFileContents, fs.ModePerm); err != nil {
+	if err := os.WriteFile(statePath, stateFileContents, fs.ModePerm); err != nil {
 		logger.Error(fmt.Sprintf("unable to save state to path %v", statePath))
 		return errors.Wrap(err, "unable to save state")
 	}

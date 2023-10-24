@@ -4,15 +4,14 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/fs"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"time"
 
-	"github.com/pkg/errors"
-
 	"github.com/hashicorp/go-retryablehttp"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -101,7 +100,7 @@ func (h *httpBatchWriter) Flush(stream Stream) error {
 		defer stitchResponse.Body.Close()
 
 		if stitchResponse.StatusCode > 203 {
-			body, err := ioutil.ReadAll(stitchResponse.Body)
+			body, err := io.ReadAll(stitchResponse.Body)
 			if err != nil {
 				return err
 			}

@@ -3,13 +3,13 @@ package internal
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"os"
 
 	"github.com/pkg/errors"
 )
 
 func ParseSavedState(stateFilePath string) (*State, error) {
-	contents, err := ioutil.ReadFile(stateFilePath)
+	contents, err := os.ReadFile(stateFilePath)
 	if err != nil {
 		return nil, errors.Wrapf(err, "unable to read file at path %v", stateFilePath)
 	}
@@ -43,7 +43,7 @@ func parseSavedStateContents(contents []byte) (*State, error) {
 }
 
 func Parse[T any](path string, obj T) (T, error) {
-	b, err := ioutil.ReadFile(path)
+	b, err := os.ReadFile(path)
 	if err != nil {
 		return obj, errors.Wrapf(err, "unable to read file at path %v", path)
 	}
