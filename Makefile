@@ -55,7 +55,7 @@ server:
 .PHONY: lint
 lint:
 	@go install honnef.co/go/tools/cmd/staticcheck@latest
-	@staticcheck ./...
+	@$(GOBIN)/staticcheck ./...
 
 .PHONY: lint-fmt
 lint-fmt: fmt
