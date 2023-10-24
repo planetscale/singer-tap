@@ -10,4 +10,4 @@ WORKDIR /singer-tap
 COPY . .
 ENTRYPOINT []
 RUN go mod download
-RUN go build ./cmd/singer-tap
+RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" ./cmd/singer-tap
