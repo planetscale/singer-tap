@@ -7,7 +7,7 @@ require (
 	github.com/hashicorp/go-retryablehttp v0.7.4
 	github.com/pkg/errors v0.9.1
 	github.com/planetscale/airbyte-source v1.17.0
-	github.com/planetscale/psdb v0.0.0-20220429000526-e2a0e798aaf3
+	github.com/planetscale/psdb v0.0.0-20231211201729-8cfd83fe2664
 	github.com/stretchr/testify v1.8.4
 	google.golang.org/grpc v1.59.0
 	vitess.io/vitess v0.17.3

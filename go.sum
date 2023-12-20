@@ -325,6 +325,8 @@ github.com/planetscale/pargzip v0.0.0-20201116224723-90c7fc03ea8a h1:y0OpQ4+5tKx
 github.com/planetscale/pargzip v0.0.0-20201116224723-90c7fc03ea8a/go.mod h1:GJFUzQuXIoB2Kjn1ZfDhJr/42D5nWOqRcIQVgCxTuIE=
 github.com/planetscale/psdb v0.0.0-20220429000526-e2a0e798aaf3 h1:oEgD8tPIpxrTTEvVEDsY9pjkJOiqmpOE5kCGnTIGyHM=
 github.com/planetscale/psdb v0.0.0-20220429000526-e2a0e798aaf3/go.mod h1:h30/ekyWqcvoiep4efR5nsNaJxGvyRN+9oTirJg4FRE=
+github.com/planetscale/psdb v0.0.0-20231211201729-8cfd83fe2664 h1:hmerwr1c1L9aBEr0HPWlwushah3kmyT+r5DUKQtMgYo=
+github.com/planetscale/psdb v0.0.0-20231211201729-8cfd83fe2664/go.mod h1:WZmi4gw3rOK+ryd1inGxgfKwoFV04O7xBCqzWzv0/0U=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/prometheus/client_golang v1.14.0 h1:nJdhIvne2eSX/XRAFV9PcvFFRbrjbcTUj0VP62TMhnw=
