@@ -54,7 +54,7 @@ func execute(logger internal.Logger, apiUrl string, batchSize, bufferSize int, t
 	var stream *internal.Stream
 
 	recordCount := 0
-	batchWriter := internal.NewHttpRecordWriter(batchSize, apiUrl, apiToken, "", nil)
+	batchWriter := internal.NewHttpRecordWriter(batchSize, apiUrl, apiToken, "", logger)
 	for scanner.Scan() {
 		s, r, err := parseInput(scanner.Text(), logger)
 		if err != nil {
