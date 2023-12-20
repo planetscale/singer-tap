@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-ARG GO_VERSION=1.21.3
+ARG GO_VERSION=1.21.5
 FROM pscale.dev/wolfi-prod/go:${GO_VERSION} AS build
 
 WORKDIR /singer-tap
