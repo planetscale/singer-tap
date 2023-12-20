@@ -139,6 +139,16 @@ func saveState(logger internal.Logger, input string, path string) error {
 		return err
 	}
 
+	// the default state directory is state/; create if it doesn't exist yet
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		logger.Info(fmt.Sprintf("creating state directory at: %v", path))
+		err := os.MkdirAll(path, fs.ModePerm)
+		if err != nil {
+			logger.Error(fmt.Sprintf("unable to create state directory at: %v", path))
+			return errors.Wrap(err, "unable to create state directory")
+		}
+	}
+
 	statePath := filepath.Join(path, fmt.Sprintf("state-%v.json", now.UnixMilli()))
 	logger.Info(fmt.Sprintf("saving state to path : %v", statePath))
 
