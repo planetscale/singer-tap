@@ -10,11 +10,10 @@ builds:
       - CGO_ENABLED=0
     goos:
       - darwin
+      - linux
       - windows
     goarch:
-      - 386
       - amd64
-      - arm
       - arm64
     main: ./cmd/singer-tap/main.go
     ldflags:
@@ -30,9 +29,7 @@ builds:
       - linux
       - windows
     goarch:
-      - 386
       - amd64
-      - arm
       - arm64
     main: ./cmd/http-tap/main.go
     ldflags:
