@@ -36,6 +36,24 @@ steps:
     plugins:
       - docker-compose#v3.9.0:
           run: ci
+  - name: "Goreleaser build check"
+    commands:
+      - go install github.com/goreleaser/goreleaser@latest
+      - export GORELEASER_CURRENT_TAG=$(buildkite-agent meta-data get "release-version")
+      - goreleaser build --rm-dist  --skip-validate
+    plugins:
+      - docker#v3.8.0:
+          image: pscale.dev/wolfi-prod/go:1.21.5
+          propagate-environment: true
+          always-pull: true
+          entrypoint: ""
+          shell: [ "/bin/sh", "-e", "-c" ]
+          environment:
+            - "GITHUB_TOKEN"
+            - "DOCKER_USERNAME"
+            - "DOCKER_PASSWORD"
+          volumes:
+            - "/var/run/docker.sock:/var/run/docker.sock"
   - wait
 
   - block: ":rocket: Release !"
