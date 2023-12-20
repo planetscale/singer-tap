@@ -1,4 +1,5 @@
 sources/*
+sample/*
 state/*
 dist/*
 bin/*
