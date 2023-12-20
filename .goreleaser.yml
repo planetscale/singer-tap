@@ -56,13 +56,6 @@ nfpms:
       {{ .ProjectName }}_{{ .Version }}_
       {{- if eq .Os "darwin" }}macOS
       {{- else }}{{ .Os }}{{ end }}_{{ .Arch }}
-scoop:
-  bucket:
-    owner: planetscale
-    name: scoop-bucket
-  homepage: "https://github.com/planetscale/singer-tap"
-  description: "The PlanetScale Singer.io Tap"
-  license: Apache 2.0
 brews:
   - homepage: "https://planetscale.com/"
     description: "The PlanetScale Singer.io Tap"
