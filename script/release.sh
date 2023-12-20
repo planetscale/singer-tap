@@ -7,8 +7,6 @@ WORKDIR=$(pwd)
 
 export DEBIAN_FRONTEND=noninteractive
 
-apt-get update
-
 echo "--- installing goreleaser"
 
 curl -L -o /tmp/goreleaser_Linux_x86_64.tar.gz https://github.com/goreleaser/goreleaser/releases/download/v1.21.2/goreleaser_Linux_x86_64.tar.gz
