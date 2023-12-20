@@ -52,8 +52,11 @@ steps:
     command: script/release.sh
     plugins:
       - docker#v3.8.0:
-          image: "golang:1.21.3"
+          image: pscale.dev/wolfi-prod/go:1.21.3
           propagate-environment: true
+          always-pull: true
+          entrypoint: ""
+          shell: ["/bin/sh", "-e", "-c"]
           environment:
             - "GITHUB_TOKEN"
             - "DOCKER_USERNAME"
