@@ -58,8 +58,10 @@ nfpms:
     formats:
       - deb
       - rpm
-    replacements:
-      darwin: macOS
+    file_name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_
+      {{- if eq .Os "darwin" }}macOS
+      {{- else }}{{ .Os }}{{ end }}_{{ .Arch }}
 scoop:
   bucket:
     owner: planetscale
