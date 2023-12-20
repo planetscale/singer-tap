@@ -49,10 +49,13 @@ steps:
 
   - label: ":github: Publishing artifacts"
     if: build.branch == "main"
-    command: script/release.sh
+    commands:
+      - go install github.com/goreleaser/goreleaser@latest
+      - export GORELEASER_CURRENT_TAG=$(buildkite-agent meta-data get "release-version")
+      - goreleaser release --rm-dist
     plugins:
       - docker#v3.8.0:
-          image: pscale.dev/wolfi-prod/go:1.21.3
+          image: pscale.dev/wolfi-prod/go:1.21.5
           propagate-environment: true
           always-pull: true
           entrypoint: ""
