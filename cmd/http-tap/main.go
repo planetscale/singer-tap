@@ -142,7 +142,7 @@ func saveState(logger internal.Logger, input string, path string) error {
 	// the default state directory is state/; create if it doesn't exist yet
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		logger.Info(fmt.Sprintf("creating state directory at: %v", path))
-		err := os.Mkdir(path, fs.ModePerm)
+		err := os.MkdirAll(path, fs.ModePerm)
 		if err != nil {
 			logger.Error(fmt.Sprintf("unable to create state directory at: %v", path))
 			return errors.Wrap(err, "unable to create state directory")
