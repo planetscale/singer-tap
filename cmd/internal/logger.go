@@ -69,7 +69,6 @@ func (sl *singerLogger) StreamSchema(stream Stream) error {
 }
 
 func (sl *singerLogger) Schema(schema Catalog) error {
-	schema.Type = "SCHEMA"
 	return sl.recordEncoder.Encode(schema)
 }
 
