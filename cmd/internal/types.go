@@ -36,7 +36,6 @@ func TableCursorToSerializedCursor(cursor *psdbconnect.TableCursor) (*Serialized
 }
 
 type Catalog struct {
-	Type    string   `json:"type"`
 	Streams []Stream `json:"streams,omitempty"`
 }
 

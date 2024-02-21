@@ -189,9 +189,7 @@ func generateEmptyState(source PlanetScaleSource, catalog Catalog, shards []stri
 
 // filterSchema returns only the selected streams from a given catalog
 func filterSchema(catalog Catalog) (Catalog, error) {
-	filteredCatalog := Catalog{
-		Type: "CATALOG",
-	}
+	filteredCatalog := Catalog{}
 	for _, stream := range catalog.Streams {
 
 		tableMetadata, err := stream.GetTableMetadata()
