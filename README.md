@@ -5,6 +5,10 @@ Singer specification for building a tap is available [here](https://github.com/s
 
 Since this is a tap, it can run [Discover mode](https://github.com/singer-io/getting-started/blob/master/docs/DISCOVERY_MODE.md#discovery-mode) or [Sync mode](https://github.com/singer-io/getting-started/blob/master/docs/SYNC_MODE.md#sync-mode)
 
+## Getting Support
+
+If you run into any issues with using this source, please reach out to PlanetScale Support at `support@planetscale.com`
+
 ## Local Development
 **1. Generate config file to connect to your PlanetScale database.** 
 1. Opt-in to Connect for your organization.
