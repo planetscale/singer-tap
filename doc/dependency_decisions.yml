@@ -942,3 +942,52 @@
     :why:
     :versions: []
     :when: 2023-10-24 15:18:27.827926000 Z
+- - :approve
+  - github.com/DataDog/appsec-internal-go
+  - &44
+    :who:
+    :why: Transitive dependency introduced by the vitess.io/vitess v0.22.4 upgrade
+    :versions: []
+    :when: 2026-09-10 00:52:24.211253463 Z
+- - :approve
+  - github.com/DataDog/go-libddwaf/v3
+  - *44
+- - :approve
+  - github.com/DataDog/go-sqllexer
+  - *44
+- - :approve
+  - github.com/eapache/queue/v2
+  - *44
+- - :approve
+  - github.com/hashicorp/go-secure-stdlib/parseutil
+  - *44
+- - :approve
+  - github.com/hashicorp/go-secure-stdlib/strutil
+  - *44
+- - :approve
+  - github.com/hashicorp/go-sockaddr
+  - *44
+- - :approve
+  - github.com/munnerz/goautoneg
+  - *44
+- - :approve
+  - github.com/outcaste-io/ristretto
+  - *44
+- - :approve
+  - github.com/planetscale/vtprotobuf
+  - *44
+- - :approve
+  - github.com/ryanuber/go-glob
+  - *44
+- - :approve
+  - github.com/sagikazarmark/slog-shim
+  - *44
+- - :approve
+  - github.com/spf13/cobra
+  - *44
+- - :approve
+  - golang.org/x/mod
+  - *44
+- - :approve
+  - golang.org/x/sync
+  - *44
