@@ -17,6 +17,10 @@ type StatusLogger interface {
 	Error(message string)
 }
 
+// SoftDeleteColumn marks a row deleted at the source. The Stitch Import API only
+// accepts the "upsert" action, so a delete cannot be expressed any other way.
+const SoftDeleteColumn = "_sdc_deleted_at"
+
 type RecordWriter interface {
 	Flush(stream Stream) error
 	Record(record Record, stream Stream) error

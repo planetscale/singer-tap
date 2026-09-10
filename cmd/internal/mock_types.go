@@ -36,6 +36,8 @@ type testPlanetScaleEdgeDatabase struct {
 	CanConnectFnInvoked bool
 	ReadFn              func(ctx context.Context, ps PlanetScaleSource, s Stream, tc *psdbconnect.TableCursor) (*SerializedCursor, error)
 	ReadFnInvoked       bool
+	// LastParams retains the full ReadParams so tests can drive the callbacks Sync wires up.
+	LastParams ReadParams
 }
 
 func (tpe *testPlanetScaleEdgeDatabase) CanConnect(ctx context.Context, ps PlanetScaleSource) error {
@@ -45,6 +47,7 @@ func (tpe *testPlanetScaleEdgeDatabase) CanConnect(ctx context.Context, ps Plane
 
 func (tpe *testPlanetScaleEdgeDatabase) Read(ctx context.Context, params ReadParams) (*SerializedCursor, error) {
 	tpe.ReadFnInvoked = true
+	tpe.LastParams = params
 	return tpe.ReadFn(ctx, params.Source, params.Table, params.LastKnownPosition)
 }
 
