@@ -38,12 +38,12 @@ steps:
           run: ci
   - name: "Goreleaser build check"
     commands:
-      - go install github.com/goreleaser/goreleaser@latest
+      - go install github.com/goreleaser/goreleaser/v2@latest
       - export GORELEASER_CURRENT_TAG=$(buildkite-agent meta-data get "release-version")
-      - goreleaser build --rm-dist  --skip-validate
+      - goreleaser build --clean --skip=validate
     plugins:
       - docker#v3.8.0:
-          image: pscale.dev/wolfi-prod/go:1.22
+          image: pscale.dev/wolfi-prod/go:1.25
           propagate-environment: true
           always-pull: true
           entrypoint: ""
@@ -68,12 +68,12 @@ steps:
   - label: ":github: Publishing artifacts"
     if: build.branch == "main"
     commands:
-      - go install github.com/goreleaser/goreleaser@latest
+      - go install github.com/goreleaser/goreleaser/v2@latest
       - export GORELEASER_CURRENT_TAG=$(buildkite-agent meta-data get "release-version")
-      - goreleaser release --rm-dist
+      - goreleaser release --clean
     plugins:
       - docker#v3.8.0:
-          image: pscale.dev/wolfi-prod/go:1.22
+          image: pscale.dev/wolfi-prod/go:1.25
           propagate-environment: true
           always-pull: true
           entrypoint: ""
