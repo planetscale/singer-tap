@@ -43,7 +43,7 @@ steps:
       - goreleaser build --rm-dist  --skip-validate
     plugins:
       - docker#v3.8.0:
-          image: pscale.dev/wolfi-prod/go:1.21.5
+          image: pscale.dev/wolfi-prod/go:1.22
           propagate-environment: true
           always-pull: true
           entrypoint: ""
@@ -73,7 +73,7 @@ steps:
       - goreleaser release --rm-dist
     plugins:
       - docker#v3.8.0:
-          image: pscale.dev/wolfi-prod/go:1.21.5
+          image: pscale.dev/wolfi-prod/go:1.22
           propagate-environment: true
           always-pull: true
           entrypoint: ""
