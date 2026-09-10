@@ -27,6 +27,7 @@ var (
 	treatTinyIntAsBoolean bool
 	useReplica            bool
 	useReadOnly           bool
+	includeDeletes        bool
 	excludedTables        string
 	singerAPIURL          string
 	batchSize             int
@@ -45,6 +46,7 @@ func init() {
 	flag.StringVar(&excludedTables, "excluded-tables", "", "(discover mode only) comma separated list of tables & views to exclude.")
 	flag.BoolVar(&useReplica, "use-replica", false, "(sync mode only) use a replica tablet to stream rows from PlanetScale")
 	flag.BoolVar(&useReadOnly, "use-rdonly", false, "(sync mode only) use a readonly tablet to stream rows from PlanetScale")
+	flag.BoolVar(&includeDeletes, "include-deletes", false, "(sync mode only) emit rows deleted at the source as upserts stamping "+internal.SoftDeleteColumn)
 
 	// variables for http commit mode
 	flag.BoolVar(&commitMode, "commit", false, "(sync mode only) Run this tap in commit mode, sends rows to Stitch Import API")
@@ -87,14 +89,14 @@ func main() {
 		tabletType = psdbconnect.TabletType_primary
 	}
 
-	err := execute(discoverMode, logger, configFilePath, catalogFilePath, stateFilePath, recordWriter, tabletType)
+	err := execute(discoverMode, logger, configFilePath, catalogFilePath, stateFilePath, recordWriter, tabletType, includeDeletes)
 	if err != nil {
 		logger.Error(err.Error())
 		os.Exit(1)
 	}
 }
 
-func execute(discoverMode bool, logger internal.Logger, configFilePath, catalogFilePath, stateFilePath string, recordWriter internal.RecordWriter, tabletType psdbconnect.TabletType) error {
+func execute(discoverMode bool, logger internal.Logger, configFilePath, catalogFilePath, stateFilePath string, recordWriter internal.RecordWriter, tabletType psdbconnect.TabletType, includeDeletes bool) error {
 	var (
 		sourceConfig internal.PlanetScaleSource
 		catalog      internal.Catalog
@@ -142,10 +144,10 @@ func execute(discoverMode bool, logger internal.Logger, configFilePath, catalogF
 		}
 	}
 
-	return sync(context.Background(), logger, sourceConfig, catalog, state, recordWriter, tabletType)
+	return sync(context.Background(), logger, sourceConfig, catalog, state, recordWriter, tabletType, includeDeletes)
 }
 
-func sync(ctx context.Context, logger internal.Logger, source internal.PlanetScaleSource, catalog internal.Catalog, state *internal.State, recordWriter internal.RecordWriter, tabletType psdbconnect.TabletType) error {
+func sync(ctx context.Context, logger internal.Logger, source internal.PlanetScaleSource, catalog internal.Catalog, state *internal.State, recordWriter internal.RecordWriter, tabletType psdbconnect.TabletType, includeDeletes bool) error {
 	logger.Info(fmt.Sprintf("Syncing records for PlanetScale database : %v", source.Database))
 	mysql, err := internal.NewMySQL(&source)
 	if err != nil {
@@ -154,7 +156,7 @@ func sync(ctx context.Context, logger internal.Logger, source internal.PlanetSca
 	defer mysql.Close()
 	ped := internal.NewEdge(mysql, logger)
 
-	return internal.Sync(ctx, mysql, ped, logger, source, catalog, state, recordWriter, tabletType)
+	return internal.Sync(ctx, mysql, ped, logger, source, catalog, state, recordWriter, tabletType, includeDeletes)
 }
 
 func discover(ctx context.Context, logger internal.Logger, source internal.PlanetScaleSource, settings internal.DiscoverSettings) error {

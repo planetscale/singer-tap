@@ -33,8 +33,11 @@ type ReadParams struct {
 	Columns           []string
 	OnResult          OnResult
 	OnCursor          OnCursor
+	OnDelete          OnResult
 	TabletType        psdbconnect.TabletType
 	Cells             []string
+	// Opts into the change-aware protocol, where deletes arrive in SyncResponse.deletes.
+	IncludeDeletes bool
 }
 
 var binlogsPurgedMessage = "Cannot replicate because the master purged required binary logs"
@@ -185,6 +188,12 @@ func (p PlanetScaleEdgeDatabase) sync(ctx context.Context, tc *psdbconnect.Table
 		Cells:      params.Cells,
 	}
 
+	// All three go together, as in planetscale/fivetran-source: once any is set,
+	// updates move out of res.Result into res.Updates.
+	sReq.IncludeInserts = params.IncludeDeletes
+	sReq.IncludeUpdates = params.IncludeDeletes
+	sReq.IncludeDeletes = params.IncludeDeletes
+
 	c, err := client.Sync(ctx, sReq)
 	if err != nil {
 		return tc, err
@@ -211,18 +220,25 @@ func (p PlanetScaleEdgeDatabase) sync(ctx context.Context, tc *psdbconnect.Table
 		// if we get a newer vgtid.
 		watchForVgGtidChange = watchForVgGtidChange || tc.Position == stopPosition
 
+		// SyncResponse carries three parallel lists with no interleaving, so the
+		// source order of a delete and an insert of the same key is not recoverable.
+		// Deletes go first: that leaves a delete-then-reinsert row live, which is the
+		// safer way to be wrong and the far more common pattern.
+		for _, deleted := range res.Deletes {
+			if err := eachRow(deleted.Result, params.OnDelete); err != nil {
+				return tc, err
+			}
+		}
+
 		for _, result := range res.Result {
-			qr := sqltypes.Proto3ToResult(result)
-			for _, row := range qr.Rows {
-				sqlResult := &sqltypes.Result{
-					Fields: result.Fields,
-				}
-				sqlResult.Rows = append(sqlResult.Rows, row)
-				if params.OnResult != nil {
-					if err := params.OnResult(sqlResult); err != nil {
-						return tc, err
-					}
-				}
+			if err := eachRow(result, params.OnResult); err != nil {
+				return tc, err
+			}
+		}
+
+		for _, updated := range res.Updates {
+			if err := eachRow(updated.After, params.OnResult); err != nil {
+				return tc, err
 			}
 		}
 
@@ -234,6 +250,20 @@ func (p PlanetScaleEdgeDatabase) sync(ctx context.Context, tc *psdbconnect.Table
 			return tc, io.EOF
 		}
 	}
+}
+
+// eachRow invokes fn once per row, re-wrapped as a single-row Result.
+func eachRow(result *querypb.QueryResult, fn OnResult) error {
+	if fn == nil || result == nil {
+		return nil
+	}
+	qr := sqltypes.Proto3ToResult(result)
+	for _, row := range qr.Rows {
+		if err := fn(&sqltypes.Result{Fields: result.Fields, Rows: []sqltypes.Row{row}}); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // filterFields removes all fields that are not part of the primary key of a given stream

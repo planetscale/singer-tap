@@ -649,7 +649,7 @@ func testLogRecords(t *testing.T, tabletType psdbconnect.TabletType) {
 		LastKnownPosition: tc,
 		TabletType:        tabletType,
 		OnResult: func(qr *sqltypes.Result) error {
-			printQueryResult(qr, cs, tal)
+			printQueryResult(qr, cs, tal, "")
 			return nil
 		},
 	})
@@ -706,4 +706,87 @@ func getTestMysqlAccess() *mysqlAccessMock {
 		},
 	}
 	return &tma
+}
+
+func TestRead_EmitsDeletesWhenEnabled(t *testing.T) {
+	b := bytes.NewBufferString("")
+	ped := PlanetScaleEdgeDatabase{Logger: NewLogger("test", b, b), Mysql: getTestMysqlAccess()}
+	tc := &psdbconnect.TableCursor{Shard: "-", Position: "A", Keyspace: "connect-test"}
+
+	row := func(id string) *query.QueryResult {
+		return sqltypes.ResultToProto3(sqltypes.MakeTestResult(sqltypes.MakeTestFields("id", "int64"), id))
+	}
+	syncClient := &connectSyncClientMock{syncResponses: []*psdbconnect.SyncResponse{
+		{Cursor: &psdbconnect.TableCursor{Shard: "-", Position: "B", Keyspace: "connect-test"}},
+		{Cursor: tc, Result: []*query.QueryResult{row("1")}},
+		{Cursor: tc, Updates: []*psdbconnect.UpdatedRow{{Before: row("2"), After: row("2")}}},
+		{Cursor: tc, Deletes: []*psdbconnect.DeletedRow{{Result: row("3")}}},
+	}}
+	cc := clientConnectionMock{
+		syncFn: func(ctx context.Context, in *psdbconnect.SyncRequest, opts ...grpc.CallOption) (psdbconnect.Connect_SyncClient, error) {
+			if in.Cursor.Position != "current" { // the data sync, not the peek
+				assert.True(t, in.IncludeInserts && in.IncludeUpdates && in.IncludeDeletes)
+			}
+			return syncClient, nil
+		},
+	}
+	ped.clientFn = func(ctx context.Context, ps PlanetScaleSource) (psdbconnect.ConnectClient, error) { return &cc, nil }
+
+	var upserts, deletes []string
+	_, err := ped.Read(context.Background(), ReadParams{
+		Table: Stream{Name: "stream"}, LastKnownPosition: tc, IncludeDeletes: true,
+		OnResult: func(r *sqltypes.Result) error {
+			upserts = append(upserts, r.Rows[0][0].ToString())
+			return nil
+		},
+		OnDelete: func(r *sqltypes.Result) error {
+			deletes = append(deletes, r.Rows[0][0].ToString())
+			return nil
+		},
+	})
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"1", "2"}, upserts, "insert and the update's after-image")
+	assert.Equal(t, []string{"3"}, deletes)
+}
+
+func TestRead_LeavesRequestUnchangedWhenDisabled(t *testing.T) {
+	b := bytes.NewBufferString("")
+	ped := PlanetScaleEdgeDatabase{Logger: NewLogger("test", b, b), Mysql: getTestMysqlAccess()}
+	tc := &psdbconnect.TableCursor{Shard: "-", Position: "A", Keyspace: "connect-test"}
+
+	row := func(id string) *query.QueryResult {
+		return sqltypes.ResultToProto3(sqltypes.MakeTestResult(sqltypes.MakeTestFields("id", "int64"), id))
+	}
+	// the peek must report a different position, or Read exits before sync() and
+	// the data-path request is never built
+	syncClient := &connectSyncClientMock{syncResponses: []*psdbconnect.SyncResponse{
+		{Cursor: &psdbconnect.TableCursor{Shard: "-", Position: "B", Keyspace: "connect-test"}},
+		{Cursor: tc, Result: []*query.QueryResult{row("1")}},
+	}}
+
+	dataSyncSeen := false
+	cc := clientConnectionMock{
+		syncFn: func(ctx context.Context, in *psdbconnect.SyncRequest, opts ...grpc.CallOption) (psdbconnect.Connect_SyncClient, error) {
+			if in.Cursor.Position != "current" {
+				dataSyncSeen = true
+				assert.False(t, in.IncludeInserts, "legacy protocol must not set include_inserts")
+				assert.False(t, in.IncludeUpdates, "legacy protocol must not set include_updates")
+				assert.False(t, in.IncludeDeletes, "legacy protocol must not set include_deletes")
+			}
+			return syncClient, nil
+		},
+	}
+	ped.clientFn = func(ctx context.Context, ps PlanetScaleSource) (psdbconnect.ConnectClient, error) { return &cc, nil }
+
+	var upserts int
+	deleteHandlerCalled := false
+	_, err := ped.Read(context.Background(), ReadParams{
+		Table: Stream{Name: "stream"}, LastKnownPosition: tc,
+		OnResult: func(r *sqltypes.Result) error { upserts++; return nil },
+		OnDelete: func(r *sqltypes.Result) error { deleteHandlerCalled = true; return nil },
+	})
+	assert.NoError(t, err)
+	assert.True(t, dataSyncSeen, "the data-path Sync must run, or the assertions above are vacuous")
+	assert.Equal(t, 1, upserts)
+	assert.False(t, deleteHandlerCalled, "no deletes are delivered on the legacy protocol")
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	psdbconnect "github.com/planetscale/airbyte-source/proto/psdbconnect/v1alpha1"
 
@@ -12,11 +13,20 @@ import (
 	"github.com/pkg/errors"
 )
 
-func Sync(ctx context.Context, mysqlDatabase PlanetScaleEdgeMysqlAccess, edgeDatabase PlanetScaleDatabase, logger Logger, source PlanetScaleSource, catalog Catalog, state *State, recordWriter RecordWriter, tabletType psdbconnect.TabletType) error {
+func Sync(ctx context.Context, mysqlDatabase PlanetScaleEdgeMysqlAccess, edgeDatabase PlanetScaleDatabase, logger Logger, source PlanetScaleSource, catalog Catalog, state *State, recordWriter RecordWriter, tabletType psdbconnect.TabletType, includeDeletes bool) error {
 	// The schema as its stored by Stitch needs to be filtered before it can be synced by the tap.
 	filteredSchema, err := filterSchema(catalog)
 	if err != nil {
 		return errors.Wrap(err, "unable to filter schema")
+	}
+
+	if includeDeletes {
+		// Not added to metadata: that drives SyncRequest.Columns, and the source has no such column.
+		for i := range filteredSchema.Streams {
+			filteredSchema.Streams[i].Schema.Properties[SoftDeleteColumn] = StreamProperty{
+				Types: []string{"null", "string"}, CustomFormat: "date-time",
+			}
+		}
 	}
 
 	// get the list of vitess shards so we can generate the empty state for a sync operation.
@@ -96,7 +106,15 @@ func Sync(ctx context.Context, mysqlDatabase PlanetScaleEdgeMysqlAccess, edgeDat
 			needsFlush := true
 			onResult := func(sqlResult *sqltypes.Result) error {
 				needsFlush = true
-				return printQueryResult(sqlResult, stream, recordWriter)
+				return printQueryResult(sqlResult, stream, recordWriter, "")
+			}
+
+			var onDelete OnResult
+			if includeDeletes {
+				onDelete = func(sqlResult *sqltypes.Result) error {
+					needsFlush = true
+					return printQueryResult(sqlResult, stream, recordWriter, time.Now().UTC().Format(time.RFC3339))
+				}
 			}
 
 			onCursor := func(cursor *psdbconnect.TableCursor) error {
@@ -120,6 +138,8 @@ func Sync(ctx context.Context, mysqlDatabase PlanetScaleEdgeMysqlAccess, edgeDat
 				Columns:           stream.Metadata.GetSelectedProperties(),
 				OnCursor:          onCursor,
 				OnResult:          onResult,
+				OnDelete:          onDelete,
+				IncludeDeletes:    includeDeletes,
 				TabletType:        tabletType,
 				Cells:             cells,
 			})
@@ -146,18 +166,30 @@ func Sync(ctx context.Context, mysqlDatabase PlanetScaleEdgeMysqlAccess, edgeDat
 	return recordWriter.State(*state)
 }
 
-func printQueryResult(qr *sqltypes.Result, s Stream, recordWriter RecordWriter) error {
+func printQueryResult(qr *sqltypes.Result, s Stream, recordWriter RecordWriter, deletedAt string) error {
 	data := QueryResultToRecords(qr)
 	for _, datum := range data {
 		subset := map[string]interface{}{}
 		for _, selectedProperty := range s.Metadata.GetSelectedProperties() {
+			// A delete before-image can be narrower than the selected set, so a
+			// missing column is expected rather than fatal.
+			raw, ok := datum[selectedProperty].(sqltypes.Value)
+			if !ok {
+				continue
+			}
 			streamProperty := s.Schema.Properties[selectedProperty]
-			subset[selectedProperty] = datum[selectedProperty]
-			val, err := Convert(streamProperty, datum[selectedProperty].(sqltypes.Value))
+			val, err := Convert(streamProperty, raw)
 			if err != nil {
-				return errors.Wrapf(err, "unable to serialize [%v] as [%v]", datum[selectedProperty], s.Schema.Properties[selectedProperty].Types)
+				return errors.Wrapf(err, "unable to serialize [%v] as [%v]", raw, streamProperty.Types)
 			}
 			subset[selectedProperty] = val
+		}
+
+		if _, ok := s.Schema.Properties[SoftDeleteColumn]; ok {
+			subset[SoftDeleteColumn] = nil
+			if deletedAt != "" {
+				subset[SoftDeleteColumn] = deletedAt
+			}
 		}
 
 		record := NewRecord()

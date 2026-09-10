@@ -273,3 +273,14 @@ PlanetScale Tap : INFO : [departments shard : -] no new rows found, exiting
 {"type":"STATE","value":{"bookmarks":{"departments":{"shards":{"-":{"cursor":"CgEtEhBpbXBvcnQtb24tc2NhbGVyGoYBTXlTUUw1Ni9lNDIyOTJlOC1lMjhmLTExZWMtOWM1Yi1kNjgwZjVkNjU1YjM6MS03MTcsZTRlMjBmMDYtZTI4Zi0xMWVjLThkMjAtOGU3YWMwOWNiNjRjOjEtNDQsZWJhNzQzYTgtZTI4Zi0xMWVjLTkyMjctNjJhYTcxMWQzM2M2OjEtMzI="}}}}}}
 {"type":"STATE","value":{"bookmarks":{"departments":{"shards":{"-":{"cursor":"CgEtEhBpbXBvcnQtb24tc2NhbGVyGoYBTXlTUUw1Ni9lNDIyOTJlOC1lMjhmLTExZWMtOWM1Yi1kNjgwZjVkNjU1YjM6MS03MTcsZTRlMjBmMDYtZTI4Zi0xMWVjLThkMjAtOGU3YWMwOWNiNjRjOjEtNDQsZWJhNzQzYTgtZTI4Zi0xMWVjLTkyMjctNjJhYTcxMWQzM2M2OjEtMzI="}}}}}}
 ```
+
+### Syncing deletes
+
+By default the tap emits inserts and updates only, so a row deleted at the source stays in the
+destination. `--include-deletes` emits deleted rows as upserts stamping an `_sdc_deleted_at`
+timestamp, the same convention `tap-mysql` and `tap-postgres` use. The column is added to each
+stream's schema automatically and does not need to be selected in the catalog.
+
+``` bash
+$ go run cmd/singer-tap/main.go --config source.json --catalog catalog.json --include-deletes
+```
