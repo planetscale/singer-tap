@@ -94,7 +94,10 @@ func (p PlanetScaleEdgeDatabase) Read(ctx context.Context, params ReadParams) (*
 		p.Logger.Info(preamble + "peeking to see if there's any new rows")
 		latestCursorPosition, lcErr := p.getLatestCursorPosition(ctx, currentPosition.Shard, currentPosition.Keyspace, params.Table, params.Source, params.TabletType, params.Cells)
 		if lcErr != nil {
-			return currentSerializedCursor, errors.Wrap(err, "Unable to get latest cursor position")
+			return currentSerializedCursor, errors.Wrap(lcErr, "Unable to get latest cursor position")
+		}
+		if latestCursorPosition == "" {
+			return currentSerializedCursor, errors.New("Unable to get latest cursor position")
 		}
 
 		// the current vgtid is the same as the last synced vgtid, no new rows.
