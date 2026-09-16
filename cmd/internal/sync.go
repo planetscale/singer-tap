@@ -52,6 +52,10 @@ func Sync(ctx context.Context, mysqlDatabase PlanetScaleEdgeMysqlAccess, edgeDat
 				state.Streams[key] = value
 			}
 		}
+		// Keep valid cursors for currently discovered shards, drop stale keys
+		// (e.g. a sibling keyspace leaked by a previous LIKE "%<db>%" match),
+		// and seed empty cursors for newly discovered shards.
+		pruneAndSeedStreamShards(logger, state, beginningState)
 	} else {
 		// if there is no last known state, start from the beginning.
 		state = beginningState
@@ -169,6 +173,39 @@ func printQueryResult(qr *sqltypes.Result, s Stream, recordWriter RecordWriter) 
 	}
 
 	return nil
+}
+
+// pruneAndSeedStreamShards keeps valid cursors for currently discovered shards,
+// drops stale keys (for example a sibling keyspace leaked by a previous LIKE
+// "%<db>%" match), and seeds empty cursors for newly discovered shards.
+func pruneAndSeedStreamShards(logger Logger, state *State, beginningState *State) {
+	for streamName, beginning := range beginningState.Streams {
+		streamState, ok := state.Streams[streamName]
+		if !ok {
+			continue
+		}
+		if streamState.Shards == nil {
+			streamState.Shards = map[string]*SerializedCursor{}
+		}
+
+		discovered := make(map[string]struct{}, len(beginning.Shards))
+		for shard, emptyCursor := range beginning.Shards {
+			discovered[shard] = struct{}{}
+			if _, exists := streamState.Shards[shard]; exists {
+				continue
+			}
+			logger.Info(fmt.Sprintf("Adding newly discovered shard %q to stream %s", shard, streamName))
+			streamState.Shards[shard] = emptyCursor
+		}
+		for shard := range streamState.Shards {
+			if _, ok := discovered[shard]; ok {
+				continue
+			}
+			logger.Info(fmt.Sprintf("Dropping stale shard %q from stream %s; it is not in the current keyspace", shard, streamName))
+			delete(streamState.Shards, shard)
+		}
+		state.Streams[streamName] = streamState
+	}
 }
 
 func generateEmptyState(source PlanetScaleSource, catalog Catalog, shards []string) *State {

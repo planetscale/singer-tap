@@ -17,6 +17,84 @@ import (
 	"vitess.io/vitess/go/vt/proto/query"
 )
 
+func TestRead_ReturnsErrorWhenCursorPeekFails(t *testing.T) {
+	tma := getTestMysqlAccess()
+	b := bytes.NewBufferString("")
+	ped := PlanetScaleEdgeDatabase{
+		Logger: NewLogger("test", b, b),
+		Mysql:  tma,
+	}
+	tc := &psdbconnect.TableCursor{
+		Shard:    "trengo_etl/-",
+		Position: "THIS_IS_A_SHARD_GTID",
+		Keyspace: "trengo",
+	}
+
+	peekErr := status.Error(codes.InvalidArgument, "shard provided in VGTID, trengo_etl/-, not found in the trengo keyspace")
+	syncClient := &connectSyncClientMock{
+		syncError: peekErr,
+	}
+
+	cc := clientConnectionMock{
+		syncFn: func(ctx context.Context, in *psdbconnect.SyncRequest, opts ...grpc.CallOption) (psdbconnect.Connect_SyncClient, error) {
+			return syncClient, nil
+		},
+	}
+	ped.clientFn = func(ctx context.Context, ps PlanetScaleSource) (psdbconnect.ConnectClient, error) {
+		return &cc, nil
+	}
+	ps := PlanetScaleSource{Database: "trengo"}
+	cs := Stream{
+		Name: "tickets",
+	}
+	sc, err := ped.Read(context.Background(), ReadParams{
+		Source:            ps,
+		Table:             cs,
+		LastKnownPosition: tc,
+	})
+	assert.Error(t, err)
+	assert.ErrorContains(t, err, "Unable to get latest cursor position")
+	assert.ErrorContains(t, err, "trengo_etl/-")
+	assert.Nil(t, sc)
+	assert.Equal(t, 1, cc.syncFnInvokedCount)
+}
+
+func TestRead_ReturnsErrorWhenCursorPeekStopPositionEmpty(t *testing.T) {
+	tma := getTestMysqlAccess()
+	b := bytes.NewBufferString("")
+	ped := PlanetScaleEdgeDatabase{
+		Logger: NewLogger("test", b, b),
+		Mysql:  tma,
+	}
+	tc := &psdbconnect.TableCursor{
+		Shard:    "-",
+		Position: "THIS_IS_A_SHARD_GTID",
+		Keyspace: "trengo",
+	}
+
+	cc := clientConnectionMock{
+		syncFn: func(ctx context.Context, in *psdbconnect.SyncRequest, opts ...grpc.CallOption) (psdbconnect.Connect_SyncClient, error) {
+			return nil, status.Error(codes.Unavailable, "unavailable")
+		},
+	}
+	ped.clientFn = func(ctx context.Context, ps PlanetScaleSource) (psdbconnect.ConnectClient, error) {
+		return &cc, nil
+	}
+	ps := PlanetScaleSource{Database: "trengo"}
+	cs := Stream{
+		Name: "tickets",
+	}
+	sc, err := ped.Read(context.Background(), ReadParams{
+		Source:            ps,
+		Table:             cs,
+		LastKnownPosition: tc,
+	})
+	assert.Error(t, err)
+	assert.EqualError(t, err, "Unable to get latest cursor position")
+	assert.Nil(t, sc)
+	assert.Equal(t, 1, cc.syncFnInvokedCount)
+}
+
 func TestRead_CanPeekBeforeRead(t *testing.T) {
 	tma := getTestMysqlAccess()
 	b := bytes.NewBufferString("")
